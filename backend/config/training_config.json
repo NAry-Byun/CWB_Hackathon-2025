@@ -1,0 +1,44 @@
+{
+  "training_config": {
+    "description": "AI Training Backend Configuration",
+    "version": "1.0",
+    "azure_openai": {
+      "chat_model": "gpt-4o",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_dimensions": 1536
+    },
+    "cosmos_db": {
+      "database_name": "ai_training_backend",
+      "container_name": "document_chunks"
+    },
+    "training_sources": {
+      "directories": [
+        {
+          "path": "./data/documents",
+          "recursive": true,
+          "batch_size": 5,
+          "source_type": "document",
+          "enabled": true
+        }
+      ],
+      "azure_storage": [],
+      "notion": {
+        "database_ids": [],
+        "page_ids": [],
+        "enabled": false
+      },
+      "web_scraping": {
+        "urls": [],
+        "sitemaps": [],
+        "enabled": false
+      }
+    },
+    "training_settings": {
+      "chunk_size": 1000,
+      "chunk_overlap": 200,
+      "embedding_batch_size": 10,
+      "max_concurrent_files": 5,
+      "rate_limit_rpm": 3000
+    }
+  }
+}

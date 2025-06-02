@@ -1,0 +1,27 @@
+{
+  "name": "personal-ai-assistant-frontend",
+  "version": "1.0.0",
+  "description": "AI Personal Assistant Frontend with Flask Backend Integration",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx http-server -p 3000 -o",
+    "dev": "npx http-server -p 3000 -o --cors",
+    "serve": "npx http-server . -p 3000 -o",
+    "build": "echo 'No build process needed for static HTML'"
+  },
+  "keywords": [
+    "ai",
+    "chat",
+    "flask",
+    "frontend",
+    "assistant"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

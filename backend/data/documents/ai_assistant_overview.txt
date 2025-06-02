@@ -1,0 +1,19 @@
+AI Personal Assistant Overview
+
+This AI assistant is built using Azure OpenAI GPT-4o and integrates with multiple services:
+
+Core Features:
+- Natural language chat interface
+- Document upload and processing
+- Vector search capabilities using Azure Cosmos DB
+- Notion integration for knowledge management
+- Web scraping for data collection
+
+Technical Stack:
+- Backend: Python Flask
+- AI Model: Azure OpenAI GPT-4o
+- Database: Azure Cosmos DB with vector search
+- Document Processing: Custom chunking and embedding
+- Frontend: React/Vue.js compatible
+
+The assistant can answer questions based on uploaded documents and provide contextual responses using RAG (Retrieval Augmented Generation) architecture.
