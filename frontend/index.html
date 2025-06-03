@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Personal Assistant - Flask Chat</title>
+    <title>AI Personal Assistant - Flask Chat with Speech</title>
     <style>
         * {
             margin: 0;
@@ -179,6 +179,12 @@
             align-items: flex-end;
         }
 
+        .input-controls {
+            display: flex;
+            gap: 8px;
+            align-items: flex-end;
+        }
+
         .chat-input {
             flex: 1;
             border: 2px solid #e9ecef;
@@ -198,13 +204,17 @@
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
 
+        .chat-input.listening {
+            border-color: #dc3545;
+            box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.2);
+            background-color: #fff5f5;
+        }
+
         .chat-input::placeholder {
             color: #6c757d;
         }
 
-        .submit-btn {
-            background: #667eea;
-            color: white;
+        .btn {
             border: none;
             border-radius: 50%;
             width: 50px;
@@ -218,6 +228,11 @@
             flex-shrink: 0;
         }
 
+        .submit-btn {
+            background: #667eea;
+            color: white;
+        }
+
         .submit-btn:hover:not(:disabled) {
             background: #5a67d8;
             transform: scale(1.05);
@@ -228,14 +243,44 @@
             cursor: not-allowed;
         }
 
-        .upload-btn {
+        .mic-btn {
             background: #28a745;
+            color: white;
+            position: relative;
+        }
+
+        .mic-btn:hover:not(:disabled) {
+            background: #218838;
+            transform: scale(1.05);
+        }
+
+        .mic-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .mic-btn.listening {
+            background: #dc3545;
+            animation: pulse 1.5s infinite;
+        }
+
+        .mic-btn.listening:hover {
+            background: #c82333;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+        }
+
+        .upload-btn {
+            background: #6f42c1;
             color: white;
             border: none;
             padding: 10px 12px;
             border-radius: 8px;
             cursor: pointer;
-            margin-right: 8px;
             font-size: 16px;
             min-width: 44px;
             height: 44px;
@@ -246,8 +291,37 @@
         }
 
         .upload-btn:hover {
-            background: #218838;
+            background: #5a2d91;
             transform: scale(1.05);
+        }
+
+        .speech-status {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            background: #dc3545;
+            color: white;
+            padding: 10px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            z-index: 1000;
+            display: none;
+            min-width: 200px;
+            text-align: center;
+        }
+
+        .speech-status.listening {
+            background: #dc3545;
+            animation: pulse 1.5s infinite;
+        }
+
+        .speech-status.processing {
+            background: #ffc107;
+            color: #000;
+        }
+
+        .speech-status.success {
+            background: #28a745;
         }
 
         .welcome-message {
@@ -319,6 +393,17 @@
             .chat-input-container {
                 padding: 15px;
             }
+
+            .input-controls {
+                flex-direction: row;
+                gap: 6px;
+            }
+
+            .btn {
+                width: 44px;
+                height: 44px;
+                font-size: 16px;
+            }
         }
 
         /* Animation classes */
@@ -356,7 +441,7 @@
     <div class="chat-container">
         <div class="chat-header">
             <h1>🤖 AI Personal Assistant</h1>
-            <p>Powered by Azure OpenAI, Cosmos DB, and Notion</p>
+            <p>Powered by Azure OpenAI, Cosmos DB, Notion & Speech Recognition</p>
         </div>
 
         <div id="chatMessages" class="chat-messages">
@@ -377,50 +462,228 @@
             <textarea 
                 id="chatInput" 
                 class="chat-input" 
-                placeholder="Type your message here... Press Enter to send, Shift+Enter for new line"
+                placeholder="Type your message or click the microphone to speak..."
                 rows="1"
             ></textarea>
-            <button id="submitBtn" class="submit-btn" disabled>
-                ➤
-            </button>
+            <div class="input-controls">
+                <button id="micBtn" class="btn mic-btn" title="Speech to Text">
+                    🎤
+                </button>
+                <button id="submitBtn" class="btn submit-btn" disabled>
+                    ➤
+                </button>
+            </div>
         </div>
     </div>
 
     <div id="statusIndicator" class="status-indicator"></div>
+    <div id="speechStatus" class="speech-status"></div>
 
     <script>
-        // Flask Backend Compatible AI Chat Interface
-        console.log("🚀 Flask Compatible AI Chat Started");
+        // Flask Backend Compatible AI Chat Interface with Speech-to-Text
+        console.log("🚀 Flask Compatible AI Chat with Speech-to-Text Started");
 
         // Global variables
         let isTyping = false;
+        let isListening = false;
+        let recognition = null;
         let uploadedDocuments = [];
         const BACKEND_URL = "http://127.0.0.1:5000"; // Flask backend
 
         // DOM elements
-        let chatInput, chatMessages, submitBtn, typingIndicator;
+        let chatInput, chatMessages, submitBtn, typingIndicator, micBtn, speechStatus;
 
         // Initialize when DOM loads
         document.addEventListener("DOMContentLoaded", function () {
-            console.log("🤖 Flask Backend AI Assistant Initializing...");
+            console.log("🤖 Flask Backend AI Assistant with Speech-to-Text Initializing...");
 
             // Get DOM elements
             chatInput = document.getElementById("chatInput");
             chatMessages = document.getElementById("chatMessages");
             submitBtn = document.getElementById("submitBtn");
             typingIndicator = document.getElementById("typingIndicator");
+            micBtn = document.getElementById("micBtn");
+            speechStatus = document.getElementById("speechStatus");
 
-            if (!chatInput || !chatMessages || !submitBtn) {
+            if (!chatInput || !chatMessages || !submitBtn || !micBtn) {
                 console.error("❌ Essential DOM elements not found");
                 return;
             }
 
             chatInput.focus();
             setupEventListeners();
+            setupSpeechRecognition();
             addDocumentUploadUI();
             showWelcomeMessage();
             checkFlaskConnection();
         });
+
+        // Setup Speech Recognition
+        function setupSpeechRecognition() {
+            // Check browser support
+            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                console.warn("⚠️ Speech Recognition not supported in this browser");
+                micBtn.disabled = true;
+                micBtn.title = "Speech Recognition not supported";
+                micBtn.style.opacity = "0.3";
+                return;
+            }
+
+            // Initialize Speech Recognition
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+
+            // Configuration
+            recognition.continuous = false;
+            recognition.interimResults = true;
+            recognition.lang = 'en-US';
+            recognition.maxAlternatives = 1;
+
+            // Event handlers
+            recognition.onstart = function() {
+                console.log("🎤 Speech recognition started");
+                isListening = true;
+                updateMicButton();
+                showSpeechStatus("🎤 Listening... Speak now!", "listening");
+                chatInput.classList.add("listening");
+                chatInput.placeholder = "Listening... Speak your message";
+            };
+
+            recognition.onresult = function(event) {
+                let interimTranscript = '';
+                let finalTranscript = '';
+
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const transcript = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        finalTranscript += transcript;
+                    } else {
+                        interimTranscript += transcript;
+                    }
+                }
+
+                // Update input field with interim results
+                if (interimTranscript) {
+                    chatInput.value = finalTranscript + interimTranscript;
+                    showSpeechStatus("🎤 " + interimTranscript, "listening");
+                }
+
+                // Handle final result
+                if (finalTranscript) {
+                    chatInput.value = finalTranscript.trim();
+                    showSpeechStatus("✅ Speech captured!", "success");
+                    autoResizeTextarea(chatInput);
+                    toggleSubmitButton();
+                    
+                    setTimeout(() => {
+                        hideSpeechStatus();
+                    }, 2000);
+                }
+            };
+
+            recognition.onerror = function(event) {
+                console.error("❌ Speech recognition error:", event.error);
+                isListening = false;
+                updateMicButton();
+                chatInput.classList.remove("listening");
+                chatInput.placeholder = "Type your message or click the microphone to speak...";
+
+                let errorMessage = "Speech recognition error";
+                switch (event.error) {
+                    case 'no-speech':
+                        errorMessage = "No speech detected. Please try again.";
+                        break;
+                    case 'audio-capture':
+                        errorMessage = "Microphone not available. Please check permissions.";
+                        break;
+                    case 'not-allowed':
+                        errorMessage = "Microphone access denied. Please allow microphone permissions.";
+                        break;
+                    case 'network':
+                        errorMessage = "Network error. Please check your connection.";
+                        break;
+                    case 'service-not-allowed':
+                        errorMessage = "Speech service not allowed. Please try again.";
+                        break;
+                    default:
+                        errorMessage = `Speech error: ${event.error}`;
+                }
+
+                showSpeechStatus("❌ " + errorMessage, "error");
+                showToast("❌ " + errorMessage, "error");
+                
+                setTimeout(() => {
+                    hideSpeechStatus();
+                }, 4000);
+            };
+
+            recognition.onend = function() {
+                console.log("🎤 Speech recognition ended");
+                isListening = false;
+                updateMicButton();
+                chatInput.classList.remove("listening");
+                chatInput.placeholder = "Type your message or click the microphone to speak...";
+                
+                if (speechStatus.textContent.includes("Listening")) {
+                    showSpeechStatus("🎤 Stopped listening", "processing");
+                    setTimeout(() => {
+                        hideSpeechStatus();
+                    }, 2000);
+                }
+            };
+
+            console.log("✅ Speech Recognition initialized");
+        }
+
+        // Speech Recognition Controls
+        function startSpeechRecognition() {
+            if (!recognition) {
+                showToast("❌ Speech Recognition not available", "error");
+                return;
+            }
+
+            if (isListening) {
+                stopSpeechRecognition();
+                return;
+            }
+
+            try {
+                recognition.start();
+                console.log("🎤 Starting speech recognition...");
+            } catch (error) {
+                console.error("❌ Failed to start speech recognition:", error);
+                showToast("❌ Failed to start microphone", "error");
+            }
+        }
+
+        function stopSpeechRecognition() {
+            if (recognition && isListening) {
+                recognition.stop();
+                console.log("🛑 Stopping speech recognition...");
+            }
+        }
+
+        function updateMicButton() {
+            if (isListening) {
+                micBtn.classList.add("listening");
+                micBtn.innerHTML = "🛑";
+                micBtn.title = "Stop listening";
+            } else {
+                micBtn.classList.remove("listening");
+                micBtn.innerHTML = "🎤";
+                micBtn.title = "Speech to Text";
+            }
+        }
+
+        function showSpeechStatus(message, type) {
+            speechStatus.textContent = message;
+            speechStatus.className = `speech-status ${type}`;
+            speechStatus.style.display = "block";
+        }
+
+        function hideSpeechStatus() {
+            speechStatus.style.display = "none";
+        }
 
         // Check Flask backend connection status
         async function checkFlaskConnection() {
@@ -453,8 +716,10 @@
             });
 
             submitBtn.addEventListener("click", sendMessageToFlask);
+            micBtn.addEventListener("click", startSpeechRecognition);
+            
             chatMessages.addEventListener("click", function () {
-                if (!isTyping) chatInput.focus();
+                if (!isTyping && !isListening) chatInput.focus();
             });
 
             document.addEventListener("keydown", function (e) {
@@ -466,6 +731,17 @@
                     e.preventDefault();
                     clearChat();
                 }
+                if ((e.ctrlKey || e.metaKey) && e.key === "m") {
+                    e.preventDefault();
+                    startSpeechRecognition();
+                }
+            });
+
+            // Handle visibility change to stop recording
+            document.addEventListener("visibilitychange", function() {
+                if (document.hidden && isListening) {
+                    stopSpeechRecognition();
+                }
             });
         }
 
@@ -473,6 +749,11 @@
         async function sendMessageToFlask() {
             const message = chatInput.value.trim();
             if (!message || isTyping) return;
+
+            // Stop listening if active
+            if (isListening) {
+                stopSpeechRecognition();
+            }
 
             console.log("📤 Sending message to Flask:", message);
 
@@ -561,7 +842,7 @@
             uploadBtn.addEventListener("click", () => fileInput.click());
             fileInput.addEventListener("change", handleFileUpload);
 
-            inputContainer.insertBefore(uploadBtn, chatInput);
+            inputContainer.insertBefore(uploadBtn, inputContainer.querySelector('.input-controls'));
             document.body.appendChild(fileInput);
         }
 
@@ -667,11 +948,11 @@
             const welcomeDiv = document.createElement("div");
             welcomeDiv.className = "welcome-message";
             welcomeDiv.innerHTML = `
-                <h3>🚀 Flask AI Assistant</h3>
-                <p>AI Chat integrated with Flask backend!</p>
+                <h3>🚀 Flask AI Assistant with Speech</h3>
+                <p>AI Chat with Speech-to-Text integration!</p>
                 <div class="welcome-features">
-                    Type a message or use the 📎 button to upload documents<br>
-                    <small>Endpoints: /api/chat/chat | /api/documents/upload</small>
+                    Type, speak, or upload documents • Click 🎤 to use voice input<br>
+                    <small>Shortcuts: Ctrl+M (Mic) | Ctrl+K (Focus) | Ctrl+L (Clear)</small>
                 </div>
             `;
             chatMessages.appendChild(welcomeDiv);
@@ -755,8 +1036,8 @@
 
         // Debug information
         console.log("🔧 Flask backend URL:", BACKEND_URL);
-        console.log("🔧 Correct chat endpoint:", `${BACKEND_URL}/api/chat/chat`);
-        console.log("🔧 Correct upload endpoint:", `${BACKEND_URL}/api/documents/upload`);
+        console.log("🔧 Speech Recognition available:", !!recognition);
+        console.log("🔧 Shortcuts: Ctrl+M (Mic), Ctrl+K (Focus), Ctrl+L (Clear)");
     </script>
 </body>
 </html>

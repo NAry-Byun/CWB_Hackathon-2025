@@ -38,34 +38,30 @@ class AzureOpenAIService:
         logger.info(f"🔧 Embedding deployment: {self.embedding_deployment}")
 
     def clean_response_formatting(self, response_text: str) -> str:
-        """Clean up AI response formatting for better readability"""
         if not response_text:
-            return ""
+         return ""
+    
+    # Start with the original response text
+        cleaned = response_text  # ✅ Initialize 'cleaned' first
+    
+    # Remove all markdown headers (##, ###, ####)
+        cleaned = re.sub(r'#{1,6}\s*', '', cleaned)  # ✅ Now 'cleaned' is defined
         
-        cleaned = response_text
+        # Remove all bold/italic markers (**text**, *text*)
+        cleaned = re.sub(r'\*{1,3}([^*]+?)\*{1,3}', r'\1', cleaned)
         
-        # Remove excessive formatting symbols
-        cleaned = re.sub(r'#{4,}', '##', cleaned)  # Reduce excessive # to ##
-        cleaned = re.sub(r'\*{4,}', '**', cleaned)  # Reduce excessive * to **
+        # Convert bullet points to simple dashes
+        cleaned = re.sub(r'^\s*[•*-]\s+', '- ', cleaned, flags=re.MULTILINE)
         
-        # Fix section headers - standardize to ##
-        cleaned = re.sub(r'###\s*(.+?)\s*###', r'## \1', cleaned)
-        cleaned = re.sub(r'####\s*(.+)', r'## \1', cleaned)
+        # Remove excessive line breaks
+        cleaned = re.sub(r'\n{3,}', '\n\n', cleaned)
         
-        # Clean up bullet points
-        cleaned = re.sub(r'\*\*([^*]+?)\*\*\s*:', r'**\1:**', cleaned)  # Fix bold labels
-        cleaned = re.sub(r'^\*\s+', '• ', cleaned, flags=re.MULTILINE)  # Convert * to •
+        # Clean up extra spaces
+        cleaned = re.sub(r'[ \t]+', ' ', cleaned)
+        cleaned = re.sub(r'\n\s+', '\n', cleaned)
         
-        # Fix spacing issues
-        cleaned = re.sub(r'\n{3,}', '\n\n', cleaned)  # Reduce excessive line breaks
-        cleaned = re.sub(r'\s+$', '', cleaned, flags=re.MULTILINE)  # Remove trailing spaces
-        
-        # Clean up specific problematic patterns
-        cleaned = re.sub(r'\*\*\*(.+?)\*\*\*', r'**\1**', cleaned)  # Triple asterisks to double
-        cleaned = re.sub(r'---+', '---', cleaned)  # Standardize separators
-        
-        # Remove standalone formatting characters
-        cleaned = re.sub(r'^\s*[*#]+\s*$', '', cleaned, flags=re.MULTILINE)
+        # Remove any remaining special characters
+        cleaned = re.sub(r'[{}[\]|\\~`]', '', cleaned)
         
         return cleaned.strip()
 
@@ -259,17 +255,36 @@ class AzureOpenAIService:
             System prompt string with all available context
         """
         base_prompt = """You are an AI Personal Assistant powered by Azure OpenAI, Cosmos DB, and Notion. 
-You are helpful, knowledgeable, and provide accurate information. 
-Always be polite and professional in your responses.
+You are helpful, knowledgeable, and provide accurate information in a conversational manner.
 
-FORMATTING INSTRUCTIONS:
-- Use clear, readable formatting
-- Use ## for section headers (not ### or ####)
-- Use • for bullet points (not *)
-- Keep responses clean and professional
-- Avoid excessive markup symbols
-- Use proper spacing between sections
-- Make your responses easy to read and scan
+IMPORTANT RESPONSE STYLE:
+- Write in plain, natural English without special formatting
+- Use simple, clear sentences that are easy to read
+- NO markdown symbols (no ##, **, *, ###, etc.)
+- NO special characters or formatting codes
+- Write like you're having a normal conversation
+- Organize information with simple paragraphs and line breaks
+- Use simple dashes (-) for lists if needed
+- Keep responses natural and conversational
+
+EXAMPLE OF GOOD RESPONSE:
+"An AI course is a structured program designed to teach people about Artificial Intelligence. These courses cover the principles, applications, and techniques of AI.
+
+Key components typically include:
+- Introduction to AI concepts and history
+- Machine Learning fundamentals  
+- Deep Learning and neural networks
+- Natural Language Processing
+- Data Science and preparation methods
+
+The courses are suitable for beginners, tech enthusiasts, business professionals, and anyone interested in AI technology."
+
+DO NOT use these patterns:
+- ## Headers or ### sections
+- **bold text** or *italic text*
+- • bullet symbols
+- Complex formatting or markup
+- Technical markdown syntax
 
 When responding to questions about meetings, schedules, or workspace information, prioritize the Notion data as it represents the user's current and most accurate information."""
 
