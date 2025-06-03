@@ -1,9 +1,20 @@
-# Python
+# Python bytecode/compiled files
 __pycache__/
 *.py[cod]
 *$py.class
+
+# Compiled extensions
 *.so
-.Python
+*.pyd
+
+# Virtual Environment folders
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Build/dist/etc.
 build/
 develop-eggs/
 dist/
@@ -22,27 +33,13 @@ share/python-wheels/
 *.egg
 MANIFEST
 
-# Virtual Environment
-venv/
-env/
-ENV/
-env.bak/
-venv.bak/
-
-# Environment Variables
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
 # IDEs
-
 .idea/
+.vscode/
 *.swp
 *.swo
 
-# OS
+# OS-specific
 .DS_Store
 .DS_Store?
 ._*
@@ -55,11 +52,18 @@ Thumbs.db
 logs/
 *.log
 
+# Environment Variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
 # Azure
 .azure/
 local.settings.json
 
-# Data
+# Data directories (keep .gitkeep)
 data/documents/*
 !data/documents/.gitkeep
 data/exports/*

@@ -1,4 +1,4 @@
-# services/cosmos_service.py - Complete Cosmos DB Vector Service
+# services/cosmos_service.py - Complete Cosmos DB Vector Service with Storage Integration
 
 import os
 import asyncio
@@ -6,11 +6,13 @@ import logging
 from typing import List, Dict, Any, Optional
 from azure.cosmos.aio import CosmosClient
 from azure.cosmos.partition_key import PartitionKey
+from azure.storage.blob import BlobServiceClient
+import openai
 
 logger = logging.getLogger(__name__)
 
 class CosmosVectorService:
-    """Complete Azure Cosmos DB Vector Service with proper VectorDistance syntax"""
+    """Complete Azure Cosmos DB Vector Service with Storage Integration"""
 
     def __init__(self):
         """Initialize Cosmos DB service with environment variables"""
@@ -28,6 +30,12 @@ class CosmosVectorService:
         self.client = None
         self.database = None
         self.container = None
+        
+        # OpenAI setup for embeddings
+        openai.api_key = os.getenv('AZURE_OPENAI_API_KEY')
+        openai.api_base = os.getenv('AZURE_OPENAI_ENDPOINT')
+        openai.api_type = "azure"
+        openai.api_version = "2023-12-01-preview"
         
         logger.info(f"🌌 CosmosVectorService initialized")
         logger.info(f"🔧 Database: {self.database_name}")
@@ -80,6 +88,127 @@ class CosmosVectorService:
             logger.error(f"❌ Cosmos DB initialization failed: {e}")
             raise
 
+    async def process_storage_files(self):
+        """Simple method to process files from Azure Storage and store in Cosmos DB"""
+        try:
+            # Get storage connection
+            connection_string = os.getenv('AZURE_STORAGE_CONNECTION_STRING')
+            container_name = os.getenv('AZURE_STORAGE_CONTAINER_NAME', 'rahul')
+            
+            if not connection_string:
+                logger.warning("No storage connection string found - skipping storage processing")
+                return {
+                    'success': False,
+                    'error': 'AZURE_STORAGE_CONNECTION_STRING not set'
+                }
+            
+            blob_service = BlobServiceClient.from_connection_string(connection_string)
+            container_client = blob_service.get_container_client(container_name)
+            
+            logger.info(f"🔍 Processing files from Azure Storage container: {container_name}")
+            
+            processed_files = []
+            failed_files = []
+            
+            # List and process each file
+            for blob in container_client.list_blobs():
+                file_name = blob.name
+                logger.info(f"📄 Processing: {file_name}")
+                
+                try:
+                    # Skip image files
+                    if any(file_name.lower().endswith(ext) for ext in ['.png', '.jpg', '.jpeg', '.gif', '.bmp']):
+                        logger.info(f"⏭️ Skipping {file_name} (image file)")
+                        continue
+                    
+                    # Download file
+                    blob_client = container_client.get_blob_client(file_name)
+                    file_content = blob_client.download_blob().readall()
+                    
+                    # Extract text (simple version)
+                    text_content = self._extract_simple_text(file_content, file_name)
+                    
+                    if text_content and len(text_content.strip()) > 10:
+                        # Create embedding
+                        embedding = await self._create_embedding(text_content[:2000])  # First 2000 chars for embedding
+                        
+                        # Store in Cosmos DB
+                        await self.store_document_chunk(
+                            file_name=file_name,
+                            chunk_text=text_content[:1000],  # First 1000 chars as summary
+                            embedding=embedding,
+                            chunk_index=0,
+                            metadata={
+                                'source': 'azure_storage', 
+                                'full_content': text_content[:5000],  # Store more content in metadata
+                                'file_size': len(file_content),
+                                'processed_at': '2025-06-03T12:00:00Z'
+                            }
+                        )
+                        
+                        processed_files.append(file_name)
+                        logger.info(f"✅ Stored {file_name} in Cosmos DB")
+                    else:
+                        logger.warning(f"⚠️ No text content found in {file_name}")
+                        failed_files.append(file_name)
+                        
+                except Exception as e:
+                    logger.error(f"❌ Failed to process {file_name}: {e}")
+                    failed_files.append(file_name)
+            
+            return {
+                'success': True,
+                'processed_files': processed_files,
+                'failed_files': failed_files,
+                'total_processed': len(processed_files),
+                'container': container_name
+            }
+            
+        except Exception as e:
+            logger.error(f"❌ Storage processing failed: {e}")
+            return {
+                'success': False,
+                'error': str(e)
+            }
+    
+    def _extract_simple_text(self, file_content: bytes, file_name: str) -> str:
+        """Simple text extraction"""
+        try:
+            if file_name.lower().endswith(('.txt', '.rtf')):
+                return file_content.decode('utf-8', errors='ignore')
+            elif file_name.lower().endswith(('.doc', '.docx')):
+                # Try to extract basic text from Word documents
+                try:
+                    # First try to decode as plain text (works for some .doc files)
+                    text = file_content.decode('utf-8', errors='ignore')
+                    # Clean up control characters
+                    import re
+                    text = re.sub(r'[\x00-\x1f\x7f-\x9f]', ' ', text)
+                    return text
+                except:
+                    return ""
+            return ""
+        except Exception as e:
+            logger.error(f"Text extraction error for {file_name}: {e}")
+            return ""
+    
+    async def _create_embedding(self, text: str) -> List[float]:
+        """Create embedding using Azure OpenAI"""
+        try:
+            if not text.strip():
+                return [0.0] * 1536
+                
+            response = await openai.Embedding.acreate(
+                engine="text-embedding-ada-002",
+                input=text
+            )
+            return response['data'][0]['embedding']
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to create embedding: {e}")
+            # Return dummy embedding as fallback
+            return [0.1] * 1536
+
     async def store_document_chunk(
         self,
         file_name: str,
@@ -109,7 +238,7 @@ class CosmosVectorService:
                 "chunk_index": chunk_index,
                 "embedding": embedding,
                 "metadata": metadata or {},
-                "created_at": "2025-06-01T18:00:00Z",
+                "created_at": "2025-06-03T12:00:00Z",
                 "document_type": "text_chunk",
                 "vector_dimensions": len(embedding)
             }

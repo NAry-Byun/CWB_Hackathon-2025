@@ -1,4 +1,3 @@
-# app.py - Complete AI Personal Assistant Backend with Web Scraper
 import os
 import asyncio
 import logging

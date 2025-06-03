@@ -337,6 +337,8 @@ async def test_scraper():
     try:
         test_urls = [
             "https://httpbin.org/html",
+            "https://www.wikipedia.org/",
+            "https://www.bing.com",
             "https://www.artificial-intelligence.blog/terminology/artificial-intelligence"
         ]
         

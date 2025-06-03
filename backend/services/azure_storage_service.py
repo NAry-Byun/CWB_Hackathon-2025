@@ -1,12 +1,12 @@
-from azure.storage.blob import BlobServiceClient
-from config.azure_settings import AzureConfig
-from utils.azure_logger import setup_azure_logger
-import io
 import os
+import logging
+from azure.storage.blob import BlobServiceClient
 from typing import Dict, List, Any, Optional
 from datetime import datetime
 
-logger = setup_azure_logger(__name__)
+# Setup logger
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class AzureStorageService:
     """Azure Blob Storage 서비스"""
@@ -14,12 +14,13 @@ class AzureStorageService:
     def __init__(self):
         """Azure Storage 서비스 초기화"""
         try:
-            self.connection_string = AzureConfig.AZURE_STORAGE_CONNECTION_STRING
-            self.account_name = AzureConfig.AZURE_STORAGE_ACCOUNT_NAME
-            self.container_name = AzureConfig.AZURE_STORAGE_CONTAINER_NAME
+            # Get configuration from environment variables
+            self.connection_string = os.getenv('AZURE_STORAGE_CONNECTION_STRING')
+            self.account_name = os.getenv('AZURE_STORAGE_ACCOUNT_NAME')
+            self.container_name = os.getenv('AZURE_STORAGE_CONTAINER_NAME', 'documents')
             
             if not self.connection_string:
-                raise ValueError("Azure Storage 연결 문자열이 설정되지 않음")
+                raise ValueError("AZURE_STORAGE_CONNECTION_STRING environment variable is required")
             
             # Blob 서비스 클라이언트 초기화
             self.blob_service_client = BlobServiceClient.from_connection_string(
@@ -29,7 +30,7 @@ class AzureStorageService:
             # 컨테이너 존재 확인 및 생성
             self._ensure_container_exists()
             
-            logger.info(f"📦 Azure Storage 서비스 초기화됨: {self.account_name}")
+            logger.info(f"📦 Azure Storage 서비스 초기화됨: {self.account_name or 'unknown'}")
             
         except Exception as e:
             logger.error(f"❌ Azure Storage 초기화 실패: {e}")
@@ -134,14 +135,18 @@ class AzureStorageService:
             
             return {
                 "status": "healthy",
-                "account_name": self.account_name,
+                "service": "Azure Storage",
+                "account_name": self.account_name or "unknown",
                 "container_name": self.container_name,
-                "last_modified": properties.last_modified.isoformat() if properties.last_modified else None
+                "last_modified": properties.last_modified.isoformat() if properties.last_modified else None,
+                "connectivity": "successful"
             }
             
         except Exception as e:
             logger.error(f"❌ Azure Storage 상태 확인 실패: {e}")
             return {
                 "status": "unhealthy",
-                "error": str(e)
+                "service": "Azure Storage",
+                "error": str(e),
+                "connectivity": "failed"
             }

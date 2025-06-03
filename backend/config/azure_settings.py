@@ -4,7 +4,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class AzureConfig:
-    """Azure 서비스 설정"""
     
     # Azure OpenAI
     AZURE_OPENAI_ENDPOINT = os.getenv('AZURE_OPENAI_ENDPOINT')
@@ -35,7 +34,7 @@ class AzureConfig:
     
     # 보안 설정
     SECRET_KEY = os.getenv('SECRET_KEY', 'your-secret-key-change-this')
-    API_KEY = os.getenv('API_KEY')  # API 접근용 키
+    API_KEY = os.getenv('API_KEY')  
     
     @classmethod
     def validate_required_settings(cls):
