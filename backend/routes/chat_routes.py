@@ -1,10 +1,11 @@
-# routes/chat_routes.py - CORS 문제 해결된 완전한 완전한 버전
+# routes/chat_routes.py - CORS 문제 해결된 완전한 완전한 버전 + Notion Direct Edit
 
 from flask import Blueprint, request, jsonify
 import asyncio
 import sys
 import os
 import logging
+import re  # Added for Notion edit detection
 from datetime import datetime
 
 # ─── Allow importing from project root ────────────────────────────────────────
@@ -104,11 +105,63 @@ def _handle_cors():
     response.headers.add("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
     return response
 
-# ─── Main Chat Endpoints ──────────────────────────────────────────────────────
+# ─── Notion Direct Edit Helper (NEW) ─────────────────────────────────────────
+def _parse_notion_edit_request(user_message: str) -> dict:
+    """Parse user message to detect direct Notion edit requests."""
+    # Multiple patterns to catch different ways users might phrase the request
+    patterns = [
+        # "Add text X to my Y Notion page"
+        r'add\s+(?:text\s+)?["\'](.+?)["\'] to (?:my\s+)?(.+?)\s+notion\s+page',
+        # "Add X to my Y page"  
+        r'add\s+["\'](.+?)["\'] to (?:my\s+)?(.+?)\s+page',
+        # "Add X to Y Notion page"
+        r'add\s+(.+?) to (?:my\s+)?(.+?)\s+notion\s+page',
+        # "Add X to Y page"
+        r'add\s+(.+?) to (?:my\s+)?(.+?)\s+page',
+        # "Write X in my Y page"
+        r'write\s+["\'](.+?)["\'] in (?:my\s+)?(.+?)\s+(?:notion\s+)?page',
+        # "Put X in my Y page"
+        r'put\s+["\'](.+?)["\'] in (?:my\s+)?(.+?)\s+(?:notion\s+)?page'
+    ]
+    
+    user_lower = user_message.lower().strip()
+    
+    for pattern in patterns:
+        match = re.search(pattern, user_lower, re.IGNORECASE)
+        if match:
+            content = match.group(1).strip()
+            page_title = match.group(2).strip()
+            
+            # Clean up page title
+            page_title = page_title.replace('my ', '').replace('the ', '')
+            
+            # Determine formatting based on content
+            formatting = 'paragraph'
+            if content.startswith('#'):
+                if content.startswith('### '):
+                    formatting = 'heading_3'
+                elif content.startswith('## '):
+                    formatting = 'heading_2'
+                elif content.startswith('# '):
+                    formatting = 'heading_1'
+            elif content.startswith(('• ', '- ', '* ')):
+                formatting = 'bulleted_list'
+            
+            return {
+                'is_notion_edit': True,
+                'content': content,
+                'page_title': page_title,
+                'formatting': formatting,
+                'original_message': user_message
+            }
+    
+    return {'is_notion_edit': False}
+
+# ─── Main Chat Endpoints (UPDATED) ────────────────────────────────────────────
 
 @chat_bp.route('/chat', methods=['POST', 'OPTIONS'])
 def chat():
-    """Full chat with vector search, Notion search, and context."""
+    """Full chat with Notion direct edit detection, vector search, Notion search, and context."""
     if request.method == 'OPTIONS':
         return _handle_cors()
 
@@ -122,10 +175,107 @@ def chat():
     user_message = data['message']
     context = data.get('context', [])
 
-    logger.info(f"💬 Full chat: {user_message[:100]}")
+    logger.info(f"💬 Full chat: {user_message}")
 
     try:
-        # 비동기 파이프라인을 동기적으로 실행
+        # 🟣 PRIORITY: Check for direct Notion edit requests first
+        notion_edit_check = _parse_notion_edit_request(user_message)
+        
+        if notion_edit_check['is_notion_edit'] and notion_service:
+            logger.info(f"🟣 DIRECT NOTION EDIT detected: '{notion_edit_check['content']}' -> '{notion_edit_check['page_title']}'")
+            
+            try:
+                # Call Notion service directly to add text
+                result = notion_service.add_text_by_page_title(
+                    notion_edit_check['page_title'], 
+                    notion_edit_check['content'], 
+                    notion_edit_check['formatting']
+                )
+                
+                if result['success']:
+                    response_text = f"""✅ **Content Added Successfully!**
+
+**Page**: {result.get('page_title', notion_edit_check['page_title'])}
+**Added**: "{notion_edit_check['content']}"
+**Time**: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+
+The text has been added to your Notion page.
+{f"🔗 View page: {result.get('page_url', '')}" if result.get('page_url') else ""}"""
+                    
+                    result_data = {
+                        "assistant_message": response_text,
+                        "content": response_text,
+                        "type": "notion_direct_edit",
+                        "success": True,
+                        "notion_result": result,
+                        "azure_services_used": {
+                            "openai": False,
+                            "cosmos_db": False,
+                            "vector_search": False,
+                            "notion_edit": True
+                        }
+                    }
+                    
+                    logger.info(f"✅ Notion direct edit successful: {result.get('page_title')}")
+                    return _success_response(result_data, "Notion page updated successfully")
+                
+                else:
+                    # Failed to add text
+                    error_text = f"""❌ **Failed to Add Content**
+
+**Error**: {result.get('error', 'Unknown error')}
+**Page**: {notion_edit_check['page_title']}
+**Content**: "{notion_edit_check['content']}"
+
+**Suggestions**:
+{result.get('suggestion', '• Check that the page exists and you have edit permissions')}
+• Make sure the page is shared with your Notion integration
+• Verify the page title is correct"""
+
+                    result_data = {
+                        "assistant_message": error_text,
+                        "content": error_text,
+                        "type": "notion_direct_edit",
+                        "success": False,
+                        "notion_result": result,
+                        "azure_services_used": {
+                            "openai": False,
+                            "cosmos_db": False,
+                            "vector_search": False,
+                            "notion_edit": True
+                        }
+                    }
+                    
+                    logger.warning(f"❌ Notion direct edit failed: {result.get('error')}")
+                    return _success_response(result_data, "Notion edit attempted but failed")
+                
+            except Exception as e:
+                logger.error(f"❌ Notion direct edit exception: {e}", exc_info=True)
+                error_text = f"""❌ **Notion Integration Error**
+
+I encountered an error while trying to add text to your Notion page:
+{str(e)}
+
+Please try again or check your Notion integration settings."""
+
+                result_data = {
+                    "assistant_message": error_text,
+                    "content": error_text,
+                    "type": "notion_direct_edit",
+                    "success": False,
+                    "error": str(e),
+                    "azure_services_used": {
+                        "openai": False,
+                        "cosmos_db": False,
+                        "vector_search": False,
+                        "notion_edit": False
+                    }
+                }
+                
+                return _success_response(result_data, "Notion edit failed due to error")
+
+        # If not a direct Notion edit, continue with normal chat pipeline
+        logger.info(f"🔄 Proceeding with normal chat pipeline")
         result_data = asyncio.run(_process_full_chat(user_message, context))
         return _success_response(result_data, "Chat response generated")
 
@@ -169,7 +319,72 @@ def simple_chat():
         logger.error(f"❌ Simple chat error: {e}", exc_info=True)
         return _error_response(f"Chat failed: {str(e)}", 500)
 
-# ─── Health and Test Endpoints ────────────────────────────────────────────────
+# ─── New Notion Endpoints (ADDED) ────────────────────────────────────────────
+@chat_bp.route('/notion/add-text', methods=['POST', 'OPTIONS'])
+def notion_add_text():
+    """Direct endpoint for adding text to Notion pages."""
+    if request.method == 'OPTIONS':
+        return _handle_cors()
+
+    if not notion_service:
+        return _error_response("Notion service not available", 503)
+
+    data = request.get_json()
+    if not data or 'page_title' not in data or 'content' not in data:
+        return _error_response("Fields 'page_title' and 'content' are required", 400)
+
+    page_title = data['page_title']
+    content = data['content']
+    formatting = data.get('formatting', 'paragraph')
+
+    try:
+        logger.info(f"🟣 Direct Notion API call: Adding '{content}' to '{page_title}'")
+        
+        result = notion_service.add_text_by_page_title(page_title, content, formatting)
+        
+        if result['success']:
+            logger.info(f"✅ Direct Notion add successful: {result.get('page_title')}")
+        else:
+            logger.warning(f"❌ Direct Notion add failed: {result.get('error')}")
+        
+        return _success_response(result, "Notion operation completed")
+
+    except Exception as e:
+        logger.error(f"❌ Direct Notion add error: {e}", exc_info=True)
+        return _error_response(f"Notion operation failed: {str(e)}", 500)
+
+@chat_bp.route('/notion/search', methods=['POST', 'OPTIONS'])
+def notion_search():
+    """Search Notion pages."""
+    if request.method == 'OPTIONS':
+        return _handle_cors()
+
+    if not notion_service:
+        return _error_response("Notion service not available", 503)
+
+    data = request.get_json()
+    if not data or 'query' not in data:
+        return _error_response("Field 'query' is required", 400)
+
+    query = data['query']
+
+    try:
+        pages = notion_service.search_pages(query)
+        
+        result = {
+            "pages": pages,
+            "count": len(pages),
+            "query": query
+        }
+        
+        logger.info(f"🔍 Notion search for '{query}': {len(pages)} results")
+        return _success_response(result, f"Found {len(pages)} Notion pages")
+
+    except Exception as e:
+        logger.error(f"❌ Notion search error: {e}", exc_info=True)
+        return _error_response(f"Notion search failed: {str(e)}", 500)
+
+# ─── Health and Test Endpoints (UPDATED) ──────────────────────────────────────
 
 @chat_bp.route('/health', methods=['GET', 'OPTIONS'])
 def chat_health():
@@ -188,7 +403,8 @@ def chat_health():
         },
         "endpoints": [
             "/chat", "/simple", "/health", "/test", "/fix-embeddings",
-            "/scrape-url", "/scrape-multiple", "/scrape-test"
+            "/scrape-url", "/scrape-multiple", "/scrape-test",
+            "/notion/add-text", "/notion/search"  # Added new endpoints
         ]
     })
 
