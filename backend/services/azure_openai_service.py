@@ -1,4 +1,4 @@
-# services/azure_openai_service.py - ENHANCED WITH NOTION INTEGRATION AND BETTER FORMATTING
+# services/azure_openai_service.py - ENHANCED WITH NOTION INTEGRATION AND BETTER FORMATTING (FIXED)
 
 import os
 import asyncio
@@ -38,14 +38,15 @@ class AzureOpenAIService:
         logger.info(f"🔧 Embedding deployment: {self.embedding_deployment}")
 
     def clean_response_formatting(self, response_text: str) -> str:
+        """Clean up AI response formatting for better readability"""
         if not response_text:
-         return ""
-    
-    # Start with the original response text
-        cleaned = response_text  # ✅ Initialize 'cleaned' first
-    
-    # Remove all markdown headers (##, ###, ####)
-        cleaned = re.sub(r'#{1,6}\s*', '', cleaned)  # ✅ Now 'cleaned' is defined
+            return ""
+        
+        # Start with the original response text
+        cleaned = response_text
+        
+        # Remove all markdown headers (##, ###, ####)
+        cleaned = re.sub(r'#{1,6}\s*', '', cleaned)
         
         # Remove all bold/italic markers (**text**, *text*)
         cleaned = re.sub(r'\*{1,3}([^*]+?)\*{1,3}', r'\1', cleaned)

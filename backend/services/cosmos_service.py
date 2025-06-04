@@ -1,4 +1,4 @@
-# services/cosmos_service.py - Complete Cosmos DB Vector Service with Storage Integration
+# services/cosmos_service.py - Fixed Cosmos DB Vector Service with Proper Azure OpenAI Integration
 
 import os
 import asyncio
@@ -7,7 +7,7 @@ from typing import List, Dict, Any, Optional
 from azure.cosmos.aio import CosmosClient
 from azure.cosmos.partition_key import PartitionKey
 from azure.storage.blob import BlobServiceClient
-import openai
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -18,8 +18,8 @@ class CosmosVectorService:
         """Initialize Cosmos DB service with environment variables"""
         self.endpoint = os.getenv('COSMOS_DB_ENDPOINT')
         self.key = os.getenv('COSMOS_DB_KEY')
-        self.database_name = os.getenv('COSMOS_DB_DATABASE', 'AICourseDB')
-        self.container_name = os.getenv('COSMOS_DB_CONTAINER', 'CourseData')
+        self.database_name = os.getenv('COSMOS_DB_DATABASE_NAME', 'AICourseDB')
+        self.container_name = os.getenv('COSMOS_DB_CONTAINER_NAME', 'CourseData')
         
         if not self.endpoint or not self.key:
             raise ValueError(
@@ -31,15 +31,17 @@ class CosmosVectorService:
         self.database = None
         self.container = None
         
-        # OpenAI setup for embeddings
-        openai.api_key = os.getenv('AZURE_OPENAI_API_KEY')
-        openai.api_base = os.getenv('AZURE_OPENAI_ENDPOINT')
-        openai.api_type = "azure"
-        openai.api_version = "2023-12-01-preview"
+        # Will be injected by the service that calls this
+        self.openai_service = None
         
         logger.info(f"🌌 CosmosVectorService initialized")
         logger.info(f"🔧 Database: {self.database_name}")
         logger.info(f"🔧 Container: {self.container_name}")
+
+    def set_openai_service(self, openai_service):
+        """Inject the OpenAI service for embeddings"""
+        self.openai_service = openai_service
+        logger.info("✅ OpenAI service injected into CosmosVectorService")
 
     async def initialize_database(self):
         """Initialize Cosmos DB with proper vector configuration"""
@@ -53,14 +55,14 @@ class CosmosVectorService:
             )
             logger.info(f"✅ Cosmos DB database '{self.database_name}' ready")
             
-            # Define vector policy for embeddings
+            # Define vector policy for embeddings (updated for latest models)
             vector_policy = {
                 "vectorEmbeddings": [
                     {
                         "path": "/embedding",
                         "dataType": "float32",
                         "distanceFunction": "cosine",
-                        "dimensions": 1536  # Standard for text-embedding-ada-002
+                        "dimensions": 1536  # Standard for text-embedding-ada-002 and 3-small
                     }
                 ]
             }
@@ -89,11 +91,18 @@ class CosmosVectorService:
             raise
 
     async def process_storage_files(self):
-        """Simple method to process files from Azure Storage and store in Cosmos DB"""
+        """Process files from Azure Storage and store in Cosmos DB with proper embeddings"""
         try:
+            # Ensure OpenAI service is available
+            if not self.openai_service:
+                return {
+                    'success': False,
+                    'error': 'OpenAI service not configured. Call set_openai_service() first.'
+                }
+
             # Get storage connection
             connection_string = os.getenv('AZURE_STORAGE_CONNECTION_STRING')
-            container_name = os.getenv('AZURE_STORAGE_CONTAINER_NAME', 'rahul')
+            container_name = os.getenv('AZURE_STORAGE_CONTAINER_NAME', 'documents')
             
             if not connection_string:
                 logger.warning("No storage connection string found - skipping storage processing")
@@ -109,15 +118,26 @@ class CosmosVectorService:
             
             processed_files = []
             failed_files = []
+            total_chunks = 0
             
             # List and process each file
-            for blob in container_client.list_blobs():
+            try:
+                blobs = list(container_client.list_blobs())
+                logger.info(f"📁 Found {len(blobs)} files in storage container")
+            except Exception as e:
+                logger.error(f"❌ Failed to list blobs: {e}")
+                return {
+                    'success': False,
+                    'error': f'Failed to access storage container: {str(e)}'
+                }
+
+            for blob in blobs:
                 file_name = blob.name
                 logger.info(f"📄 Processing: {file_name}")
                 
                 try:
                     # Skip image files
-                    if any(file_name.lower().endswith(ext) for ext in ['.png', '.jpg', '.jpeg', '.gif', '.bmp']):
+                    if any(file_name.lower().endswith(ext) for ext in ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.ico']):
                         logger.info(f"⏭️ Skipping {file_name} (image file)")
                         continue
                     
@@ -125,43 +145,73 @@ class CosmosVectorService:
                     blob_client = container_client.get_blob_client(file_name)
                     file_content = blob_client.download_blob().readall()
                     
-                    # Extract text (simple version)
-                    text_content = self._extract_simple_text(file_content, file_name)
+                    # Extract text (enhanced version)
+                    text_content = await self._extract_text_advanced(file_content, file_name)
                     
-                    if text_content and len(text_content.strip()) > 10:
-                        # Create embedding
-                        embedding = await self._create_embedding(text_content[:2000])  # First 2000 chars for embedding
+                    if text_content and len(text_content.strip()) > 50:  # Minimum content threshold
+                        # Split into chunks for better processing
+                        chunks = self._split_text_into_chunks(text_content, chunk_size=1000, overlap=200)
                         
-                        # Store in Cosmos DB
-                        await self.store_document_chunk(
-                            file_name=file_name,
-                            chunk_text=text_content[:1000],  # First 1000 chars as summary
-                            embedding=embedding,
-                            chunk_index=0,
-                            metadata={
-                                'source': 'azure_storage', 
-                                'full_content': text_content[:5000],  # Store more content in metadata
-                                'file_size': len(file_content),
-                                'processed_at': '2025-06-03T12:00:00Z'
-                            }
-                        )
+                        file_chunk_count = 0
+                        for i, chunk in enumerate(chunks):
+                            if len(chunk.strip()) > 20:  # Skip very short chunks
+                                # Create embedding using our OpenAI service
+                                embedding = await self.openai_service.generate_embeddings(chunk)
+                                
+                                if embedding and len(embedding) > 0:
+                                    # Store in Cosmos DB
+                                    await self.store_document_chunk(
+                                        file_name=file_name,
+                                        chunk_text=chunk,
+                                        embedding=embedding,
+                                        chunk_index=i,
+                                        metadata={
+                                            'source': 'azure_storage',
+                                            'file_size': len(file_content),
+                                            'processed_at': datetime.now().isoformat(),
+                                            'total_chunks': len(chunks),
+                                            'original_content_length': len(text_content)
+                                        }
+                                    )
+                                    file_chunk_count += 1
+                                    total_chunks += 1
+                                else:
+                                    logger.warning(f"⚠️ Failed to create embedding for chunk {i} of {file_name}")
                         
-                        processed_files.append(file_name)
-                        logger.info(f"✅ Stored {file_name} in Cosmos DB")
+                        if file_chunk_count > 0:
+                            processed_files.append({
+                                'file_name': file_name,
+                                'chunks_created': file_chunk_count,
+                                'total_text_length': len(text_content)
+                            })
+                            logger.info(f"✅ Stored {file_name} with {file_chunk_count} chunks in Cosmos DB")
+                        else:
+                            failed_files.append({
+                                'file_name': file_name,
+                                'error': 'No embeddings could be created'
+                            })
                     else:
-                        logger.warning(f"⚠️ No text content found in {file_name}")
-                        failed_files.append(file_name)
+                        logger.warning(f"⚠️ No sufficient text content found in {file_name}")
+                        failed_files.append({
+                            'file_name': file_name,
+                            'error': 'Insufficient text content'
+                        })
                         
                 except Exception as e:
                     logger.error(f"❌ Failed to process {file_name}: {e}")
-                    failed_files.append(file_name)
+                    failed_files.append({
+                        'file_name': file_name,
+                        'error': str(e)
+                    })
             
             return {
                 'success': True,
                 'processed_files': processed_files,
                 'failed_files': failed_files,
                 'total_processed': len(processed_files),
-                'container': container_name
+                'total_chunks_created': total_chunks,
+                'container': container_name,
+                'summary': f"Successfully processed {len(processed_files)} files, created {total_chunks} searchable chunks"
             }
             
         except Exception as e:
@@ -170,44 +220,86 @@ class CosmosVectorService:
                 'success': False,
                 'error': str(e)
             }
-    
-    def _extract_simple_text(self, file_content: bytes, file_name: str) -> str:
-        """Simple text extraction"""
+
+    def _split_text_into_chunks(self, text: str, chunk_size: int = 1000, overlap: int = 200) -> List[str]:
+        """Split text into overlapping chunks for better context preservation"""
+        if len(text) <= chunk_size:
+            return [text]
+        
+        chunks = []
+        start = 0
+        
+        while start < len(text):
+            end = start + chunk_size
+            
+            # Try to break at word boundaries
+            if end < len(text):
+                # Look back for a good breaking point
+                for i in range(min(100, end - start)):
+                    if text[end - i] in ['.', '!', '?', '\n']:
+                        end = end - i + 1
+                        break
+                    elif text[end - i] in [' ', '\t']:
+                        end = end - i
+                        break
+            
+            chunk = text[start:end].strip()
+            if chunk:
+                chunks.append(chunk)
+            
+            # Move start forward with overlap
+            start = end - overlap
+            if start >= len(text):
+                break
+        
+        return chunks
+
+    async def _extract_text_advanced(self, file_content: bytes, file_name: str) -> str:
+        """Enhanced text extraction with better error handling"""
         try:
-            if file_name.lower().endswith(('.txt', '.rtf')):
-                return file_content.decode('utf-8', errors='ignore')
-            elif file_name.lower().endswith(('.doc', '.docx')):
-                # Try to extract basic text from Word documents
+            file_ext = file_name.lower().split('.')[-1] if '.' in file_name else ''
+            
+            if file_ext in ['txt', 'md', 'rtf']:
+                # Try multiple encodings
+                for encoding in ['utf-8', 'utf-16', 'latin-1', 'cp1252']:
+                    try:
+                        return file_content.decode(encoding, errors='ignore')
+                    except UnicodeDecodeError:
+                        continue
+                
+            elif file_ext in ['doc', 'docx']:
+                # Basic Word document text extraction
                 try:
-                    # First try to decode as plain text (works for some .doc files)
+                    # Try to decode as UTF-8 first (works for some simple .doc files)
                     text = file_content.decode('utf-8', errors='ignore')
-                    # Clean up control characters
+                    # Clean up control characters and binary noise
                     import re
-                    text = re.sub(r'[\x00-\x1f\x7f-\x9f]', ' ', text)
-                    return text
+                    text = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]', ' ', text)
+                    text = re.sub(r'\s+', ' ', text)
+                    # Filter out mostly non-text content
+                    if len([c for c in text if c.isalnum()]) / max(len(text), 1) > 0.3:
+                        return text
                 except:
-                    return ""
-            return ""
+                    pass
+                
+            elif file_ext == 'pdf':
+                # Note: For production, you'd want to use PyPDF2 or pdfplumber
+                logger.warning(f"⚠️ PDF processing not implemented for {file_name}")
+                return ""
+                
+            # Fallback: try to extract any readable text
+            try:
+                text = file_content.decode('utf-8', errors='ignore')
+                # Remove control characters
+                import re
+                text = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]', ' ', text)
+                return text
+            except:
+                return ""
+                
         except Exception as e:
             logger.error(f"Text extraction error for {file_name}: {e}")
             return ""
-    
-    async def _create_embedding(self, text: str) -> List[float]:
-        """Create embedding using Azure OpenAI"""
-        try:
-            if not text.strip():
-                return [0.0] * 1536
-                
-            response = await openai.Embedding.acreate(
-                engine="text-embedding-ada-002",
-                input=text
-            )
-            return response['data'][0]['embedding']
-            
-        except Exception as e:
-            logger.error(f"❌ Failed to create embedding: {e}")
-            # Return dummy embedding as fallback
-            return [0.1] * 1536
 
     async def store_document_chunk(
         self,
@@ -231,20 +323,23 @@ class CosmosVectorService:
             Document ID of the stored chunk
         """
         try:
+            document_id = f"{file_name}_{chunk_index}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            
             document = {
-                "id": f"{file_name}_{chunk_index}",
+                "id": document_id,
                 "file_name": file_name,
                 "chunk_text": chunk_text,
                 "chunk_index": chunk_index,
                 "embedding": embedding,
                 "metadata": metadata or {},
-                "created_at": "2025-06-03T12:00:00Z",
+                "created_at": datetime.now().isoformat(),
                 "document_type": "text_chunk",
-                "vector_dimensions": len(embedding)
+                "vector_dimensions": len(embedding),
+                "text_length": len(chunk_text)
             }
             
             result = await self.container.create_item(body=document)
-            logger.info(f"✅ Stored chunk {chunk_index} for {file_name}")
+            logger.debug(f"✅ Stored chunk {chunk_index} for {file_name}")
             return result['id']
             
         except Exception as e:
@@ -273,14 +368,20 @@ class CosmosVectorService:
                 logger.warning("⚠️ Empty query embedding provided")
                 return []
 
+            # Ensure we have a container
+            if not self.container:
+                await self.initialize_database()
+
             # Use VectorDistance with proper syntax for Cosmos DB
             query = f"""
             SELECT TOP {limit}
+                c.id,
                 c.file_name,
                 c.chunk_text,
                 c.chunk_index,
                 c.metadata,
                 c.created_at,
+                c.text_length,
                 VectorDistance(c.embedding, @embedding) AS similarity
             FROM c
             WHERE VectorDistance(c.embedding, @embedding) > {similarity_threshold}
@@ -296,7 +397,8 @@ class CosmosVectorService:
             results = []
             query_iterable = self.container.query_items(
                 query=query,
-                parameters=parameters
+                parameters=parameters,
+                enable_cross_partition_query=True
             )
             
             async for item in query_iterable:
@@ -308,7 +410,8 @@ class CosmosVectorService:
             for i, result in enumerate(results[:3]):
                 file_name = result.get("file_name", "unknown")
                 similarity = result.get("similarity", 0.0)
-                logger.info(f"  {i+1}. {file_name} (similarity: {similarity:.3f})")
+                text_preview = result.get("chunk_text", "")[:100] + "..."
+                logger.info(f"  {i+1}. {file_name} (similarity: {similarity:.3f}) - {text_preview}")
             
             return results
             
@@ -327,12 +430,23 @@ class CosmosVectorService:
             List of all documents
         """
         try:
-            query = f"SELECT TOP {limit} * FROM c"
+            if not self.container:
+                await self.initialize_database()
+                
+            query = f"SELECT TOP {limit} * FROM c ORDER BY c.created_at DESC"
             
             results = []
-            query_iterable = self.container.query_items(query=query)
+            query_iterable = self.container.query_items(
+                query=query,
+                enable_cross_partition_query=True
+            )
             
             async for item in query_iterable:
+                # Remove embedding from results to save bandwidth
+                if 'embedding' in item:
+                    item['has_embedding'] = True
+                    item['embedding_dimensions'] = len(item['embedding'])
+                    del item['embedding']
                 results.append(item)
             
             logger.info(f"📋 Retrieved {len(results)} documents")
@@ -374,18 +488,20 @@ class CosmosVectorService:
         """
         try:
             if not self.container:
-                return {
-                    "status": "not_initialized",
-                    "error": "Container not initialized"
-                }
+                await self.initialize_database()
             
             # Simple query to test connectivity
-            query = "SELECT TOP 1 c.id FROM c"
-            query_iterable = self.container.query_items(query=query)
+            query = "SELECT TOP 1 c.id, c.file_name FROM c"
+            query_iterable = self.container.query_items(
+                query=query,
+                enable_cross_partition_query=True
+            )
             
             count = 0
-            async for _ in query_iterable:
+            sample_doc = None
+            async for item in query_iterable:
                 count += 1
+                sample_doc = item
                 break  # Just check if we can query
             
             return {
@@ -394,6 +510,8 @@ class CosmosVectorService:
                 "database": self.database_name,
                 "container": self.container_name,
                 "can_query": True,
+                "sample_document": sample_doc,
+                "openai_service_connected": self.openai_service is not None,
                 "connectivity": "successful"
             }
             
@@ -414,9 +532,15 @@ class CosmosVectorService:
             Dict with document statistics
         """
         try:
+            if not self.container:
+                await self.initialize_database()
+                
             # Count total documents
             count_query = "SELECT VALUE COUNT(1) FROM c"
-            count_iterable = self.container.query_items(query=count_query)
+            count_iterable = self.container.query_items(
+                query=count_query,
+                enable_cross_partition_query=True
+            )
             
             total_count = 0
             async for count in count_iterable:
@@ -424,8 +548,17 @@ class CosmosVectorService:
                 break
             
             # Count by file type
-            file_count_query = "SELECT c.file_name, COUNT(1) as chunk_count FROM c GROUP BY c.file_name"
-            file_iterable = self.container.query_items(query=file_count_query)
+            file_count_query = """
+            SELECT c.file_name, 
+                   COUNT(1) as chunk_count,
+                   SUM(c.text_length) as total_text_length
+            FROM c 
+            GROUP BY c.file_name
+            """
+            file_iterable = self.container.query_items(
+                query=file_count_query,
+                enable_cross_partition_query=True
+            )
             
             files = []
             async for file_info in file_iterable:
@@ -434,8 +567,9 @@ class CosmosVectorService:
             return {
                 "total_chunks": total_count,
                 "unique_files": len(files),
-                "files": files[:10],  # Limit to first 10 files
-                "has_vector_data": total_count > 0
+                "files": files[:20],  # Limit to first 20 files
+                "has_vector_data": total_count > 0,
+                "openai_service_available": self.openai_service is not None
             }
             
         except Exception as e:

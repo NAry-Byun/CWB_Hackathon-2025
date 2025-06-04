@@ -1,28 +1,24 @@
-# services/document_service.py
-
+# services/document_service.py - 간단한 버전
 import logging
-from typing import Dict, Any
 
 logger = logging.getLogger(__name__)
 
 class DocumentProcessor:
-    """
-    Stub for a service that would:
-    - Read files (.pdf, .docx, .txt, .md, etc.)
-    - Split into text chunks
-    - Possibly perform OCR or format conversions
-    """
-
-    def __init__(self, chunk_size: int = 1000, chunk_overlap: int = 200):
-        self.chunk_size = chunk_size
-        self.chunk_overlap = chunk_overlap
-        logger.info(
-            f"📚 DocumentProcessor initialized (chunk_size={chunk_size}, chunk_overlap={chunk_overlap})"
-        )
-
-    async def health_check(self) -> Dict[str, Any]:
-        return {"status": "healthy", "chunk_size": self.chunk_size, "chunk_overlap": self.chunk_overlap}
-
-    # You can add utility methods here, e.g.:
-    # async def split_text_into_chunks(self, text: str) -> List[str]:
-    #     ...
+    def __init__(self):
+        self.cosmos_service = None
+        self.openai_service = None
+        self.storage_service = None
+        logger.info("📚 DocumentProcessor initialized")
+    
+    def set_services(self, cosmos_service=None, openai_service=None, storage_service=None):
+        self.cosmos_service = cosmos_service
+        self.openai_service = openai_service
+        self.storage_service = storage_service
+    
+    async def process_blob_storage_files(self):
+        if self.cosmos_service:
+            return await self.cosmos_service.process_storage_files()
+        return {'success': False, 'error': 'Cosmos service not available'}
+    
+    async def health_check(self):
+        return {"status": "healthy", "service": "DocumentProcessor"}
