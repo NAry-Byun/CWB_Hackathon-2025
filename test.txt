@@ -1,1 +1,0 @@
-This is a test document for blob sync. It contains some sample text to test the synchronization between Azure Blob Storage and Cosmos DB.

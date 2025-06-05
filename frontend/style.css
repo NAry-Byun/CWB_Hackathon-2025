@@ -155,22 +155,12 @@ body {
     animation: typing 1.4s infinite ease-in-out;
 }
 
-.typing-dots div:nth-child(1) {
-    animation-delay: -0.32s;
-}
-.typing-dots div:nth-child(2) {
-    animation-delay: -0.16s;
-}
+.typing-dots div:nth-child(1) { animation-delay: -0.32s; }
+.typing-dots div:nth-child(2) { animation-delay: -0.16s; }
 
 @keyframes typing {
-    0%, 80%, 100% {
-        transform: scale(0);
-        opacity: 0.5;
-    }
-    40% {
-        transform: scale(1);
-        opacity: 1;
-    }
+    0%, 80%, 100% { transform: scale(0); opacity: 0.5; }
+    40% { transform: scale(1); opacity: 1; }
 }
 
 .chat-input-container {
@@ -179,6 +169,12 @@ body {
     border-top: 1px solid #e9ecef;
     display: flex;
     gap: 10px;
+    align-items: flex-end;
+}
+
+.input-controls {
+    display: flex;
+    gap: 8px;
     align-items: flex-end;
 }
 
@@ -201,13 +197,17 @@ body {
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
+.chat-input.listening {
+    border-color: #dc3545;
+    box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.2);
+    background-color: #fff5f5;
+}
+
 .chat-input::placeholder {
     color: #6c757d;
 }
 
-.submit-btn {
-    background: #667eea;
-    color: white;
+.btn {
     border: none;
     border-radius: 50%;
     width: 50px;
@@ -221,6 +221,11 @@ body {
     flex-shrink: 0;
 }
 
+.submit-btn {
+    background: #667eea;
+    color: white;
+}
+
 .submit-btn:hover:not(:disabled) {
     background: #5a67d8;
     transform: scale(1.05);
@@ -231,14 +236,44 @@ body {
     cursor: not-allowed;
 }
 
-.upload-btn {
+.mic-btn {
     background: #28a745;
+    color: white;
+    position: relative;
+}
+
+.mic-btn:hover:not(:disabled) {
+    background: #218838;
+    transform: scale(1.05);
+}
+
+.mic-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.mic-btn.listening {
+    background: #dc3545;
+    animation: pulse 1.5s infinite;
+}
+
+.mic-btn.listening:hover {
+    background: #c82333;
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+}
+
+.upload-btn {
+    background: #6f42c1;
     color: white;
     border: none;
     padding: 10px 12px;
     border-radius: 8px;
     cursor: pointer;
-    margin-right: 8px;
     font-size: 16px;
     min-width: 44px;
     height: 44px;
@@ -249,8 +284,37 @@ body {
 }
 
 .upload-btn:hover {
-    background: #218838;
+    background: #5a2d91;
     transform: scale(1.05);
+}
+
+.speech-status {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    background: #dc3545;
+    color: white;
+    padding: 10px 16px;
+    border-radius: 20px;
+    font-size: 14px;
+    z-index: 1000;
+    display: none;
+    min-width: 200px;
+    text-align: center;
+}
+
+.speech-status.listening {
+    background: #dc3545;
+    animation: pulse 1.5s infinite;
+}
+
+.speech-status.processing {
+    background: #ffc107;
+    color: #000;
+}
+
+.speech-status.success {
+    background: #28a745;
 }
 
 .welcome-message {
@@ -322,40 +386,33 @@ body {
     .chat-input-container {
         padding: 15px;
     }
+
+    .input-controls {
+        flex-direction: row;
+        gap: 6px;
+    }
+
+    .btn {
+        width: 44px;
+        height: 44px;
+        font-size: 16px;
+    }
 }
 
 /* Animation classes */
 @keyframes slideIn {
-    from {
-        transform: translateX(100%);
-        opacity: 0;
-    }
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
 }
 
 @keyframes slideOut {
-    from {
-        transform: translateX(0);
-        opacity: 1;
-    }
-    to {
-        transform: translateX(100%);
-        opacity: 0;
-    }
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(100%); opacity: 0; }
 }
 
 @keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .message {
