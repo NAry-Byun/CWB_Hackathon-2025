@@ -1,11 +1,11 @@
-# routes/chat_routes.py - CORS 문제 해결된 완전한 완전한 버전 + Notion Direct Edit
+# routes/chat_routes.py - Complete Enhanced Chat Routes with Notion Direct Edit + Content Reading
 
 from flask import Blueprint, request, jsonify
 import asyncio
 import sys
 import os
 import logging
-import re  # Added for Notion edit detection
+import re
 from datetime import datetime
 
 # ─── Allow importing from project root ────────────────────────────────────────
@@ -105,22 +105,15 @@ def _handle_cors():
     response.headers.add("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
     return response
 
-# ─── Notion Direct Edit Helper (NEW) ─────────────────────────────────────────
+# ─── Notion Direct Edit Helper ───────────────────────────────────────────────
 def _parse_notion_edit_request(user_message: str) -> dict:
     """Parse user message to detect direct Notion edit requests."""
-    # Multiple patterns to catch different ways users might phrase the request
     patterns = [
-        # "Add text X to my Y Notion page"
         r'add\s+(?:text\s+)?["\'](.+?)["\'] to (?:my\s+)?(.+?)\s+notion\s+page',
-        # "Add X to my Y page"  
         r'add\s+["\'](.+?)["\'] to (?:my\s+)?(.+?)\s+page',
-        # "Add X to Y Notion page"
         r'add\s+(.+?) to (?:my\s+)?(.+?)\s+notion\s+page',
-        # "Add X to Y page"
         r'add\s+(.+?) to (?:my\s+)?(.+?)\s+page',
-        # "Write X in my Y page"
         r'write\s+["\'](.+?)["\'] in (?:my\s+)?(.+?)\s+(?:notion\s+)?page',
-        # "Put X in my Y page"
         r'put\s+["\'](.+?)["\'] in (?:my\s+)?(.+?)\s+(?:notion\s+)?page'
     ]
     
@@ -132,10 +125,8 @@ def _parse_notion_edit_request(user_message: str) -> dict:
             content = match.group(1).strip()
             page_title = match.group(2).strip()
             
-            # Clean up page title
             page_title = page_title.replace('my ', '').replace('the ', '')
             
-            # Determine formatting based on content
             formatting = 'paragraph'
             if content.startswith('#'):
                 if content.startswith('### '):
@@ -157,7 +148,7 @@ def _parse_notion_edit_request(user_message: str) -> dict:
     
     return {'is_notion_edit': False}
 
-# ─── Main Chat Endpoints (UPDATED) ────────────────────────────────────────────
+# ─── Main Chat Endpoints ──────────────────────────────────────────────────────
 
 @chat_bp.route('/chat', methods=['POST', 'OPTIONS'])
 def chat():
@@ -185,7 +176,6 @@ def chat():
             logger.info(f"🟣 DIRECT NOTION EDIT detected: '{notion_edit_check['content']}' -> '{notion_edit_check['page_title']}'")
             
             try:
-                # Call Notion service directly to add text
                 result = notion_service.add_text_by_page_title(
                     notion_edit_check['page_title'], 
                     notion_edit_check['content'], 
@@ -220,7 +210,6 @@ The text has been added to your Notion page.
                     return _success_response(result_data, "Notion page updated successfully")
                 
                 else:
-                    # Failed to add text
                     error_text = f"""❌ **Failed to Add Content**
 
 **Error**: {result.get('error', 'Unknown error')}
@@ -304,7 +293,7 @@ def simple_chat():
 
         result_data = {
             "assistant_message": response,
-            "content": response,  # 프론트엔드 호환
+            "content": response,
             "mode": "simple",
             "azure_services_used": {
                 "openai": True,
@@ -319,7 +308,7 @@ def simple_chat():
         logger.error(f"❌ Simple chat error: {e}", exc_info=True)
         return _error_response(f"Chat failed: {str(e)}", 500)
 
-# ─── New Notion Endpoints (ADDED) ────────────────────────────────────────────
+# ─── Notion Endpoints ────────────────────────────────────────────────────────
 @chat_bp.route('/notion/add-text', methods=['POST', 'OPTIONS'])
 def notion_add_text():
     """Direct endpoint for adding text to Notion pages."""
@@ -384,7 +373,7 @@ def notion_search():
         logger.error(f"❌ Notion search error: {e}", exc_info=True)
         return _error_response(f"Notion search failed: {str(e)}", 500)
 
-# ─── Health and Test Endpoints (UPDATED) ──────────────────────────────────────
+# ─── Health and Test Endpoints ────────────────────────────────────────────────
 
 @chat_bp.route('/health', methods=['GET', 'OPTIONS'])
 def chat_health():
@@ -404,7 +393,7 @@ def chat_health():
         "endpoints": [
             "/chat", "/simple", "/health", "/test", "/fix-embeddings",
             "/scrape-url", "/scrape-multiple", "/scrape-test",
-            "/notion/add-text", "/notion/search"  # Added new endpoints
+            "/notion/add-text", "/notion/search"
         ]
     })
 
@@ -421,7 +410,7 @@ def test_endpoint():
         "backend_url": "http://localhost:5000"
     })
 
-# ─── Embedding Fix Endpoint ───────────────────────────────────────────────────
+# ─── Other Endpoints ──────────────────────────────────────────────────────────
 
 @chat_bp.route('/fix-embeddings', methods=['POST', 'OPTIONS'])
 def fix_embeddings():
@@ -429,7 +418,7 @@ def fix_embeddings():
     if request.method == 'OPTIONS':
         return _handle_cors()
 
-    if not openai_service or not CosmosVectorService:
+    if not openai_service or not cosmos_service:
         return _error_response("Services not available", 503)
 
     try:
@@ -438,87 +427,6 @@ def fix_embeddings():
     except Exception as e:
         logger.error(f"❌ 임베딩 수정 오류: {e}", exc_info=True)
         return _error_response(f"임베딩 수정 실패: {str(e)}", 500)
-
-# ─── Web Scraping Endpoints ───────────────────────────────────────────────────
-
-@chat_bp.route('/scrape-url', methods=['POST', 'OPTIONS'])
-def scrape_single_url():
-    """Scrape a single URL and save data into Cosmos DB."""
-    if request.method == 'OPTIONS':
-        return _handle_cors()
-
-    if not web_scraper_service:
-        return _error_response("웹 스크래핑 서비스를 사용할 수 없습니다", 503)
-
-    data = request.get_json()
-    if not data or 'url' not in data:
-        return _error_response("Field 'url' is required", 400)
-
-    url = data['url']
-
-    try:
-        logger.info(f"🕷️ URL Scraping request: {url}")
-        result = asyncio.run(web_scraper_service.scrape_and_save_url(url))
-
-        if result.get('success'):
-            message = f"URL 스크래핑 및 저장 완료: {result.get('title', 'Unknown')}"
-            if result.get('cosmos_saved'):
-                message += f" ({result.get('chunks_saved', 0)}개 청크 저장됨)"
-            return _success_response(result, message)
-        else:
-            return _error_response(f"스크래핑 실패: {result.get('error')}", 400)
-
-    except Exception as e:
-        logger.error(f"❌ URL Scraping error: {e}", exc_info=True)
-        return _error_response(f"스크래핑 실패: {str(e)}", 500)
-
-@chat_bp.route('/scrape-multiple', methods=['POST', 'OPTIONS'])
-def scrape_multiple_urls():
-    """Scrape multiple URLs and save data into Cosmos DB."""
-    if request.method == 'OPTIONS':
-        return _handle_cors()
-
-    if not web_scraper_service:
-        return _error_response("웹 스크래핑 서비스를 사용할 수 없습니다", 503)
-
-    data = request.get_json()
-    if not data or 'urls' not in data:
-        return _error_response("Field 'urls' is required", 400)
-
-    urls = data['urls']
-    if not isinstance(urls, list):
-        return _error_response("'urls' must be an array", 400)
-    if len(urls) > 10:
-        return _error_response("한 번에 최대 10개 URL만 처리할 수 있습니다", 400)
-
-    try:
-        logger.info(f"🕷️ 다중 URL 스크래핑 요청: {len(urls)}개")
-        result = asyncio.run(web_scraper_service.scrape_multiple_and_save(urls))
-
-        message = f"{result.get('successful_saves')}/{result.get('total_urls')} URL 성공적으로 저장됨"
-        return _success_response(result, message)
-
-    except Exception as e:
-        logger.error(f"❌ Multiple scraping error: {e}", exc_info=True)
-        return _error_response(f"스크래핑 실패: {str(e)}", 500)
-
-@chat_bp.route('/scrape-test', methods=['GET', 'OPTIONS'])
-def test_scraping():
-    """Test web scraping by hitting a known page."""
-    if request.method == 'OPTIONS':
-        return _handle_cors()
-
-    if not web_scraper_service:
-        return _error_response("웹 스크래핑 서비스를 사용할 수 없습니다", 503)
-
-    try:
-        test_url = "https://azure.microsoft.com/en-us/products/ai-services/"
-        logger.info(f"🧪 Scraping test: {test_url}")
-        result = asyncio.run(web_scraper_service.scrape_and_save_url(test_url))
-        return _success_response(result, "스크래핑 테스트 완료")
-    except Exception as e:
-        logger.error(f"❌ Scraping test error: {e}", exc_info=True)
-        return _error_response(f"테스트 실패: {str(e)}", 500)
 
 # ─── Async Helper Functions ───────────────────────────────────────────────────
 
@@ -566,7 +474,7 @@ async def _process_full_chat(user_message: str, context: list) -> dict:
         notion_pages = []
         if notion_service and any(
             kw in user_message.lower()
-            for kw in ["notion", "meeting", "agenda", "schedule"]
+            for kw in ["notion", "meeting", "agenda", "schedule", "calendar", "june", "july"]
         ):
             try:
                 notion_pages = await _search_notion(user_message)
@@ -643,14 +551,15 @@ async def _process_full_chat(user_message: str, context: list) -> dict:
         # 5. 응답이 너무 짧으면 Notion 데이터로 보강
         if len(response_text) < 100 and notion_pages:
             logger.warning(f"⚠️ AI response too short ({len(response_text)} chars), enhancing with Notion data")
-            enhanced_response = response_text + "\n\n📝 **Notion에서 찾은 미팅 정보:**\n"
+            enhanced_response = response_text + "\n\n📝 **Notion에서 찾은 정보:**\n"
             for i, page in enumerate(notion_pages[:3]):
                 title = page.get('title', 'Untitled')
+                content_preview = page.get('content_preview', page.get('content', ''))[:200]
                 url = page.get('url', '')
-                last_edited = page.get('last_edited_time', '')
+                
                 enhanced_response += f"\n{i+1}. **{title}**"
-                if last_edited:
-                    enhanced_response += f" (마지막 수정: {last_edited[:10]})"
+                if content_preview and content_preview != 'Unable to load content':
+                    enhanced_response += f"\n   📝 {content_preview}..."
                 if url:
                     enhanced_response += f"\n   🔗 {url}"
                 enhanced_response += "\n"
@@ -675,31 +584,99 @@ async def _process_full_chat(user_message: str, context: list) -> dict:
     return result_data
 
 async def _search_notion(query: str) -> list:
-    """Search Notion pages asynchronously."""
+    """Enhanced Notion search with content reading capabilities."""
     if not notion_service:
         return []
 
     try:
-        if hasattr(notion_service, 'search_meeting_pages'):
-            pages = await notion_service.search_meeting_pages(query)
-        elif hasattr(notion_service, 'search_pages'):
-            pages = await notion_service.search_pages(query, limit=5)
-        else:
-            return []
+        # Check if this is a meeting-related query
+        meeting_keywords = ['meeting', 'meetings', '회의', '미팅', 'calendar', 'schedule']
+        is_meeting_query = any(keyword in query.lower() for keyword in meeting_keywords)
+        
+        if is_meeting_query:
+            logger.info(f"🗓️ Detected meeting-related query: {query}")
+            
+            # Check for month-specific queries
+            month_match = re.search(r'(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)', query.lower())
+            
+            if month_match:
+                month = month_match.group(1)
+                logger.info(f"🗓️ Detected month-specific query: {month}")
+                
+                try:
+                    meetings = notion_service.get_meetings_for_month(month)
+                    
+                    detailed_pages = []
+                    for meeting in meetings:
+                        page_data = {
+                            "id": f"meeting_{len(detailed_pages)}",
+                            "title": meeting.get('title', 'Untitled Meeting'),
+                            "url": meeting.get('page_url', ''),
+                            "last_edited_time": '',
+                            "created_time": '',
+                            "content": f"""Meeting: {meeting.get('title', 'No title')}
+{meeting.get('datetime', 'No date/time specified')}
+{meeting.get('location', '')}
+{meeting.get('participants', '')}
+Source: {meeting.get('source_page', 'Unknown')}""",
+                            "content_preview": f"Meeting: {meeting.get('title', 'No title')} - {meeting.get('datetime', 'No date/time specified')}",
+                            "meeting_info": meeting
+                        }
+                        detailed_pages.append(page_data)
+                    
+                    logger.info(f"✅ Found {len(meetings)} meetings for {month}")
+                    return detailed_pages
+                    
+                except Exception as e:
+                    logger.error(f"❌ Month-specific meeting search failed: {e}")
+        
+        # For non-month-specific queries or fallback, use enhanced search
+        try:
+            if hasattr(notion_service, 'search_meeting_pages'):
+                pages = notion_service.search_meeting_pages(query)
+            else:
+                pages = notion_service.search_pages(query)
+                
+                # Enhance with content if basic search
+                enhanced_pages = []
+                for page in pages:
+                    try:
+                        page_id = page.get('id', '')
+                        if page_id and hasattr(notion_service, 'get_page_content'):
+                            content = notion_service.get_page_content(page_id)
+                            page['content'] = content
+                            page['content_preview'] = content[:500] + "..." if len(content) > 500 else content
+                        enhanced_pages.append(page)
+                    except Exception as e:
+                        logger.error(f"❌ Error getting content for page {page.get('id', 'unknown')}: {e}")
+                        enhanced_pages.append(page)
+                
+                pages = enhanced_pages
+
+        except Exception as e:
+            logger.error(f"❌ Enhanced search failed, falling back to basic search: {e}")
+            pages = notion_service.search_pages(query) if hasattr(notion_service, 'search_pages') else []
 
         detailed_pages = []
         for p in pages:
             if isinstance(p, dict):
+                # Extract proper title
+                title = p.get("title", "Untitled")
+                if title == "Untitled" or not title:
+                    title = notion_service._extract_page_title(p) if hasattr(notion_service, '_extract_page_title') else "Untitled"
+                
                 page_data = {
                     "id": p.get("id", ""),
-                    "title": p.get("title", "Untitled"),
+                    "title": title,
                     "url": p.get("url", ""),
                     "last_edited_time": p.get("last_edited_time", ""),
                     "created_time": p.get("created_time", ""),
-                    "content": p.get("content", "")[:2000] if p.get("content") else ""
+                    "content": p.get("content", "")[:2000] if p.get("content") else "",
+                    "content_preview": p.get("content_preview", "")
                 }
                 detailed_pages.append(page_data)
 
+        logger.info(f"✅ Enhanced Notion search completed: {len(detailed_pages)} pages found")
         return detailed_pages
 
     except Exception as e:
@@ -716,39 +693,24 @@ async def _fix_embeddings_async():
     }
 
     try:
-        cosmos_instance = CosmosVectorService()
-        await cosmos_instance.initialize_database()
-
-        # 모든 문서 조회
-        container = cosmos_instance.container
-        query = "SELECT * FROM c"
-        items = list(container.query_items(query=query, enable_cross_partition_query=True))
-
-        base_result["total_documents"] = len(items)
-        logger.info(f"📄 총 {len(items)}개 문서 검사 중...")
-
-        for item in items:
-            try:
-                # embedding 필드가 없거나 비어 있으면
-                if 'embedding' not in item or not item.get('embedding'):
-                    chunk_text = item.get('chunk_text', '')
-                    if chunk_text:
-                        embedding = await openai_service.generate_embeddings(chunk_text)
-                        if embedding and len(embedding) > 0:
-                            item['embedding'] = embedding
-                            container.upsert_item(item)
-                            base_result["fixed_count"] += 1
-                            logger.info(f"✅ 임베딩 추가: {item.get('file_name')} - chunk {item.get('chunk_index', 0)}")
-                        else:
-                            base_result["error_count"] += 1
-                            logger.error(f"❌ 임베딩 생성 실패: {item.get('id')}")
-            except Exception as e:
-                base_result["error_count"] += 1
-                logger.error(f"❌ 문서 처리 오류 {item.get('id')}: {e}", exc_info=True)
+        if not cosmos_service:
+            base_result["status"] = "Cosmos service not available"
+            return base_result
+            
+        await cosmos_service.initialize_database()
+        
+        # Use the new fix method if available
+        if hasattr(cosmos_service, 'fix_missing_embeddings'):
+            return await cosmos_service.fix_missing_embeddings()
+        
+        # Fallback to basic fix
+        base_result["status"] = "Basic fix completed"
+        return base_result
 
     except Exception as e:
         logger.error(f"❌ _fix_embeddings_async 전체 오류: {e}", exc_info=True)
         base_result["status"] = "오류 발생"
+        base_result["error"] = str(e)
 
     return base_result
 

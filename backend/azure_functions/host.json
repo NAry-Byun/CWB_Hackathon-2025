@@ -11,47 +11,5 @@
   "extensionBundle": {
     "id": "Microsoft.Azure.Functions.ExtensionBundle",
     "version": "[4.*, 5.0.0)"
-  },
-  "functionTimeout": "00:10:00",
-  "healthMonitor": {
-    "enabled": true,
-    "healthCheckInterval": "00:00:10",
-    "healthCheckWindow": "00:02:00",
-    "healthCheckThreshold": 6,
-    "counterThreshold": 0.80
-  },
-  "retry": {
-    "strategy": "exponentialBackoff",
-    "maxRetryCount": 3,
-    "minimumInterval": "00:00:02",
-    "maximumInterval": "00:00:30"
   }
-}
-
----
-
-# azure_functions/local.settings.json
-{
-  "IsEncrypted": false,
-  "Values": {
-    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
-    "FUNCTIONS_WORKER_RUNTIME": "python",
-    "FUNCTIONS_EXTENSION_VERSION": "~4",
-    
-    "AZURE_OPENAI_ENDPOINT": "https://your-openai-resource.openai.azure.com/",
-    "AZURE_OPENAI_API_KEY": "your-openai-api-key",
-    
-    "COSMOS_DB_ENDPOINT": "https://your-cosmos-account.documents.azure.com:443/",
-    "COSMOS_DB_KEY": "your-cosmos-db-key",
-    
-    "AZURE_STORAGE_CONNECTION_STRING": "DefaultEndpointsProtocol=https;AccountName=...",
-    
-    "NOTION_API_KEY": "secret_your_notion_integration_token",
-    "NOTION_VERSION": "2022-06-28",
-    
-    "TEAMS_WEBHOOK_URL": "https://outlook.office.com/webhook/your-teams-webhook",
-    
-    "CosmosDBConnection": "AccountEndpoint=https://your-cosmos-account.documents.azure.com:443/;AccountKey=your-key;"
-  },
-  "ConnectionStrings": {}
 }
