@@ -1113,3 +1113,5 @@ if __name__ == "__main__":
         print("\n⚠️ 사용자에 의해 중단됨")
     except Exception as e:
         print(f"\n❌ 실행 실패: {e}")
+
+EnhancedWebScraperService = EnvironmentFixedScraper

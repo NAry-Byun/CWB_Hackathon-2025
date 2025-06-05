@@ -1,232 +1,166 @@
-# services/document_processor.py - 문서 처리 서비스
+# services/document_processor.py - SIMPLE FIX VERSION
 
-import os
-import io
 import logging
-from typing import Dict, Any, Optional, List
-import asyncio
+import io
+import zipfile
+import xml.etree.ElementTree as ET
+from typing import Dict, Any, Optional
+import re
 
 logger = logging.getLogger(__name__)
 
 class DocumentProcessor:
-    """문서 처리 서비스 - 다양한 파일 형식에서 텍스트 추출"""
+    """Document processing service for extracting text from various file formats"""
     
     def __init__(self):
-        """문서 처리기 초기화"""
-        self.supported_formats = {
-            '.txt': self._extract_text_from_txt,
-            '.md': self._extract_text_from_txt,
-            '.pdf': self._extract_text_from_pdf,
-            '.docx': self._extract_text_from_docx,
-            '.doc': self._extract_text_from_doc,
-            '.json': self._extract_text_from_json,
-            '.csv': self._extract_text_from_csv
-        }
-        
-        logger.info(f"✅ 문서 처리기 초기화 완료")
-        logger.info(f"🔧 지원 형식: {list(self.supported_formats.keys())}")
+        """Initialize document processor"""
+        # FIXED: Include periods in extensions
+        self.supported_extensions = {'.txt', '.md', '.docx', '.doc', '.rtf', '.pdf'}
+        logger.info("✅ DocumentProcessor initialized with extensions: %s", self.supported_extensions)
     
     def validate_file_format(self, filename: str) -> bool:
-        """파일 형식이 지원되는지 확인"""
-        _, ext = os.path.splitext(filename.lower())
-        return ext in self.supported_formats
+        """Check if file format is supported"""
+        extension = self._get_file_extension(filename)
+        is_supported = extension in self.supported_extensions
+        logger.info(f"📋 File validation: {filename} -> extension: '{extension}' -> supported: {is_supported}")
+        return is_supported
+    
+    def _get_file_extension(self, filename: str) -> str:
+        """Get lowercase file extension WITH period"""
+        if '.' not in filename:
+            return ''
+        # Get extension including the period
+        extension = '.' + filename.lower().split('.')[-1]
+        logger.debug(f"🔍 Extension detection: {filename} -> {extension}")
+        return extension
     
     async def extract_text_from_file(self, file_content: bytes, filename: str) -> str:
-        """파일에서 텍스트 추출"""
+        """Extract text content from file based on its format"""
         try:
-            _, ext = os.path.splitext(filename.lower())
+            extension = self._get_file_extension(filename)
             
-            if ext not in self.supported_formats:
-                raise ValueError(f"지원되지 않는 파일 형식: {ext}")
+            logger.info(f"📄 Extracting text from {filename} (type: {extension})")
             
-            # 비동기적으로 텍스트 추출
-            loop = asyncio.get_event_loop()
-            text_content = await loop.run_in_executor(
-                None,
-                self.supported_formats[ext],
-                file_content
-            )
+            if extension in ['.txt', '.md']:
+                text = self._extract_from_text(file_content)
+            elif extension == '.docx':
+                text = self._extract_from_docx(file_content)
+            elif extension == '.doc':
+                text = self._extract_from_doc(file_content)
+            elif extension == '.rtf':
+                text = self._extract_from_rtf(file_content)
+            elif extension == '.pdf':
+                text = self._extract_from_pdf(file_content)
+            else:
+                logger.warning(f"⚠️ Unsupported file type: {extension}")
+                return f"Unsupported file type: {filename}"
             
-            logger.info(f"✅ 텍스트 추출 완료: {filename} ({len(text_content)} chars)")
-            return text_content
+            # Clean and validate text
+            clean_text = self._clean_text(text)
+            
+            if len(clean_text.strip()) < 10:
+                logger.warning(f"⚠️ Very little text extracted from {filename}: {len(clean_text)} chars")
+                return f"Minimal content extracted from {filename}. File may be empty or corrupted."
+            
+            logger.info(f"✅ Text extraction successful: {len(clean_text)} characters from {filename}")
+            return clean_text
             
         except Exception as e:
-            logger.error(f"❌ 텍스트 추출 실패 {filename}: {str(e)}")
-            return f"텍스트 추출 실패: {str(e)}"
+            logger.error(f"❌ Text extraction failed for {filename}: {str(e)}")
+            return f"Error extracting text from {filename}: {str(e)}"
     
-    def _extract_text_from_txt(self, file_content: bytes) -> str:
-        """TXT/MD 파일에서 텍스트 추출"""
+    def _extract_from_text(self, file_content: bytes) -> str:
+        """Extract text from plain text files"""
         try:
-            # UTF-8로 디코딩 시도
-            try:
-                return file_content.decode('utf-8')
-            except UnicodeDecodeError:
-                # UTF-8 실패시 다른 인코딩 시도
-                encodings = ['cp949', 'euc-kr', 'latin-1']
-                for encoding in encodings:
-                    try:
-                        return file_content.decode(encoding)
-                    except UnicodeDecodeError:
-                        continue
-                # 모든 인코딩 실패시 오류 무시하고 디코딩
-                return file_content.decode('utf-8', errors='ignore')
-        except Exception as e:
-            logger.error(f"❌ TXT 파일 처리 실패: {str(e)}")
-            return ""
-    
-    def _extract_text_from_pdf(self, file_content: bytes) -> str:
-        """PDF 파일에서 텍스트 추출"""
-        try:
-            # PyPDF2 사용
-            try:
-                import PyPDF2
-                pdf_file = io.BytesIO(file_content)
-                pdf_reader = PyPDF2.PdfReader(pdf_file)
-                
-                text = ""
-                for page in pdf_reader.pages:
-                    text += page.extract_text() + "\n"
-                
-                return text.strip()
-                
-            except ImportError:
-                logger.warning("PyPDF2가 설치되지 않음. pdfplumber 시도...")
-                
-                # pdfplumber 사용
+            for encoding in ['utf-8', 'utf-16', 'latin-1', 'cp1252']:
                 try:
-                    import pdfplumber
-                    with pdfplumber.open(io.BytesIO(file_content)) as pdf:
-                        text = ""
-                        for page in pdf.pages:
-                            page_text = page.extract_text()
-                            if page_text:
-                                text += page_text + "\n"
-                        return text.strip()
-                        
-                except ImportError:
-                    logger.error("PDF 처리 라이브러리가 설치되지 않음 (PyPDF2, pdfplumber)")
-                    return "PDF 처리를 위해 PyPDF2 또는 pdfplumber를 설치해주세요."
-                    
+                    return file_content.decode(encoding)
+                except UnicodeDecodeError:
+                    continue
+            return file_content.decode('utf-8', errors='ignore')
         except Exception as e:
-            logger.error(f"❌ PDF 파일 처리 실패: {str(e)}")
-            return f"PDF 처리 실패: {str(e)}"
+            return f"Error reading text file: {str(e)}"
     
-    def _extract_text_from_docx(self, file_content: bytes) -> str:
-        """DOCX 파일에서 텍스트 추출"""
+    def _extract_from_docx(self, file_content: bytes) -> str:
+        """Extract text from DOCX files"""
         try:
-            import docx
-            doc_file = io.BytesIO(file_content)
-            doc = docx.Document(doc_file)
-            
-            text = ""
-            for paragraph in doc.paragraphs:
-                text += paragraph.text + "\n"
-            
-            return text.strip()
-            
-        except ImportError:
-            logger.error("python-docx가 설치되지 않음")
-            return "DOCX 처리를 위해 python-docx를 설치해주세요."
-        except Exception as e:
-            logger.error(f"❌ DOCX 파일 처리 실패: {str(e)}")
-            return f"DOCX 처리 실패: {str(e)}"
-    
-    def _extract_text_from_doc(self, file_content: bytes) -> str:
-        """DOC 파일에서 텍스트 추출 (제한적 지원)"""
-        try:
-            # python-docx2txt 사용 시도
-            try:
-                import docx2txt
-                text = docx2txt.process(io.BytesIO(file_content))
-                return text if text else "DOC 파일에서 텍스트를 추출할 수 없습니다."
-            except ImportError:
-                logger.warning("docx2txt가 설치되지 않음")
-                return "DOC 파일 처리를 위해 docx2txt를 설치해주세요."
+            with zipfile.ZipFile(io.BytesIO(file_content), 'r') as docx_zip:
+                document_xml = docx_zip.read('word/document.xml')
+                root = ET.fromstring(document_xml)
+                
+                text_elements = []
+                for elem in root.iter():
+                    if elem.tag.endswith('}t') and elem.text:
+                        text_elements.append(elem.text)
+                
+                full_text = ' '.join(text_elements)
+                return full_text if full_text.strip() else "No readable text found in DOCX file"
                 
         except Exception as e:
-            logger.error(f"❌ DOC 파일 처리 실패: {str(e)}")
-            return f"DOC 처리 실패: {str(e)}"
+            logger.error(f"❌ DOCX extraction failed: {str(e)}")
+            return f"Error reading DOCX file: {str(e)}"
     
-    def _extract_text_from_json(self, file_content: bytes) -> str:
-        """JSON 파일에서 텍스트 추출"""
+    def _extract_from_doc(self, file_content: bytes) -> str:
+        """Extract text from DOC files (simplified approach)"""
         try:
-            import json
-            data = json.loads(file_content.decode('utf-8'))
+            text = file_content.decode('latin-1', errors='ignore')
+            text = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]', ' ', text)
+            words = re.findall(r'[a-zA-Z0-9\s\.,!?;:\-()]{3,}', text)
             
-            # JSON을 문자열로 변환 (예쁘게 포맷팅)
-            return json.dumps(data, indent=2, ensure_ascii=False)
+            if not words:
+                return "No readable text found in DOC file"
+            
+            extracted_text = ' '.join(words)
+            extracted_text = re.sub(r'\s+', ' ', extracted_text).strip()
+            
+            return extracted_text if len(extracted_text) >= 50 else f"Limited text extracted from DOC file: {extracted_text}"
             
         except Exception as e:
-            logger.error(f"❌ JSON 파일 처리 실패: {str(e)}")
-            return f"JSON 처리 실패: {str(e)}"
+            logger.error(f"❌ DOC extraction failed: {str(e)}")
+            return f"Error reading DOC file: {str(e)}"
     
-    def _extract_text_from_csv(self, file_content: bytes) -> str:
-        """CSV 파일에서 텍스트 추출"""
+    def _extract_from_rtf(self, file_content: bytes) -> str:
+        """Extract text from RTF files"""
         try:
-            import csv
-            import io
+            rtf_content = file_content.decode('latin-1', errors='ignore')
             
-            # CSV 내용을 문자열로 변환
-            csv_text = file_content.decode('utf-8')
-            csv_file = io.StringIO(csv_text)
+            # Remove RTF control codes
+            text = re.sub(r'\\[a-z]+\d*\s?', '', rtf_content)
+            text = re.sub(r'[{}]', '', text)
+            text = re.sub(r'\\\S', '', text)
+            text = re.sub(r'\s+', ' ', text).strip()
             
-            # CSV 읽기
-            reader = csv.reader(csv_file)
-            text_lines = []
-            
-            for row in reader:
-                text_lines.append(", ".join(row))
-            
-            return "\n".join(text_lines)
+            return text if len(text) >= 20 else "No readable text found in RTF file"
             
         except Exception as e:
-            logger.error(f"❌ CSV 파일 처리 실패: {str(e)}")
-            return f"CSV 처리 실패: {str(e)}"
+            logger.error(f"❌ RTF extraction failed: {str(e)}")
+            return f"Error reading RTF file: {str(e)}"
     
-    async def health_check(self) -> Dict[str, Any]:
-        """문서 처리기 상태 확인"""
+    def _extract_from_pdf(self, file_content: bytes) -> str:
+        """Extract text from PDF files (basic implementation)"""
         try:
-            # 설치된 라이브러리 확인
-            libraries = {}
+            pdf_text = file_content.decode('latin-1', errors='ignore')
+            text_matches = re.findall(r'\((.*?)\)', pdf_text)
             
-            try:
-                import PyPDF2
-                libraries['PyPDF2'] = True
-            except ImportError:
-                libraries['PyPDF2'] = False
-                
-            try:
-                import pdfplumber
-                libraries['pdfplumber'] = True
-            except ImportError:
-                libraries['pdfplumber'] = False
-                
-            try:
-                import docx
-                libraries['python-docx'] = True
-            except ImportError:
-                libraries['python-docx'] = False
-                
-            try:
-                import docx2txt
-                libraries['docx2txt'] = True
-            except ImportError:
-                libraries['docx2txt'] = False
+            if text_matches:
+                extracted_text = ' '.join(text_matches)
+                extracted_text = re.sub(r'[^\w\s\.,!?;:\-()]', '', extracted_text)
+                return extracted_text.strip()
             
-            return {
-                "status": "healthy",
-                "service": "document_processor",
-                "supported_formats": list(self.supported_formats.keys()),
-                "installed_libraries": libraries,
-                "pdf_support": libraries.get('PyPDF2', False) or libraries.get('pdfplumber', False),
-                "docx_support": libraries.get('python-docx', False),
-                "doc_support": libraries.get('docx2txt', False)
-            }
+            return "PDF text extraction requires additional libraries (PyPDF2 or pdfplumber)"
             
         except Exception as e:
-            logger.error(f"❌ 문서 처리기 상태 확인 실패: {str(e)}")
-            return {
-                "status": "unhealthy",
-                "service": "document_processor",
-                "error": str(e)
-            }
+            return f"Error reading PDF file: {str(e)}"
+    
+    def _clean_text(self, text: str) -> str:
+        """Clean and normalize extracted text"""
+        if not text:
+            return ""
+        
+        text = re.sub(r'\s+', ' ', text)
+        text = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]', '', text)
+        text = text.replace('"', '"').replace('"', '"')
+        text = text.replace(''', "'").replace(''', "'")
+        text = text.replace('–', '-').replace('—', '-')
+        
+        return text.strip()

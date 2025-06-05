@@ -1,4 +1,4 @@
-# routes/blob_sync_routes.py - 간단한 Blob Storage와 Cosmos DB 동기화
+# routes/blob_sync_routes.py - COMPLETE Flask Backend for Blob Storage Sync
 
 from flask import Blueprint, request, jsonify
 import asyncio
@@ -8,11 +8,11 @@ from functools import wraps
 
 logger = logging.getLogger(__name__)
 
-# Blueprint 생성
+# Blueprint creation
 blob_sync_bp = Blueprint('blob_sync', __name__)
 
 def async_route(f):
-    """Flask route를 async 함수로 변환하는 데코레이터"""
+    """Decorator to convert Flask route to async function"""
     @wraps(f)
     def wrapper(*args, **kwargs):
         loop = asyncio.new_event_loop()
@@ -23,191 +23,85 @@ def async_route(f):
             loop.close()
     return wrapper
 
-@blob_sync_bp.route('/health', methods=['GET'])
-def health_check():
-    """Blob 동기화 서비스 상태 확인"""
-    return jsonify({
-        "status": "healthy",
-        "service": "blob_sync",
-        "description": "Blob Storage to Cosmos DB synchronization",
-        "endpoints": [
-            "/health",
-            "/sync-all",
-            "/sync-file", 
-            "/status",
-            "/test-connection"
-        ],
-        "timestamp": datetime.now().isoformat()
-    })
-
-@blob_sync_bp.route('/test-connection', methods=['GET'])
+@blob_sync_bp.route('/sync-all', methods=['POST'])
 @async_route
-async def test_connection():
-    """Blob Storage와 Cosmos DB 연결 테스트"""
+async def sync_all_blobs():
+    """Sync all Blob Storage files to Cosmos DB"""
     try:
-        results = {
-            "blob_storage": {"status": "unknown", "error": None},
-            "cosmos_db": {"status": "unknown", "error": None}
-        }
+        logger.info("🚀 Starting bulk blob sync process...")
         
-        # Blob Storage 연결 테스트
-        try:
-            from services.azure_storage_service import AzureStorageService
-            storage_service = AzureStorageService()
-            storage_health = await storage_service.health_check()
-            results["blob_storage"] = storage_health
-        except Exception as e:
-            results["blob_storage"] = {"status": "error", "error": str(e)}
-        
-        # Cosmos DB 연결 테스트
-        try:
-            from services.cosmos_service import CosmosVectorService
-            cosmos_service = CosmosVectorService()
-            cosmos_health = await cosmos_service.health_check()
-            results["cosmos_db"] = cosmos_health
-        except Exception as e:
-            results["cosmos_db"] = {"status": "error", "error": str(e)}
-        
-        # 전체 상태 결정
-        overall_status = "healthy"
-        if results["blob_storage"]["status"] != "healthy" or results["cosmos_db"]["status"] != "healthy":
-            overall_status = "degraded"
-        
-        return jsonify({
-            "success": True,
-            "overall_status": overall_status,
-            "services": results,
-            "timestamp": datetime.now().isoformat()
-        })
-        
-    except Exception as e:
-        logger.error(f"❌ 연결 테스트 실패: {str(e)}")
-        return jsonify({
-            "success": False,
-            "error": str(e),
-            "timestamp": datetime.now().isoformat()
-        }), 500
-
-@blob_sync_bp.route('/status', methods=['GET'])
-@async_route
-async def sync_status():
-    """동기화 상태 확인"""
-    try:
+        # Service initialization
         from services.azure_storage_service import AzureStorageService
         from services.cosmos_service import CosmosVectorService
+        from services.azure_openai_service import AzureOpenAIService
+        from services.document_processor import DocumentProcessor
         
         storage_service = AzureStorageService()
         cosmos_service = CosmosVectorService()
+        openai_service = AzureOpenAIService()
+        doc_processor = DocumentProcessor()
         
-        # Blob Storage 파일 목록
-        try:
-            blob_files = await storage_service.list_files()
-            blob_count = len(blob_files)
-        except Exception as e:
-            blob_files = []
-            blob_count = 0
-            logger.error(f"❌ Blob 파일 목록 조회 실패: {e}")
-        
-        # Cosmos DB 통계
-        try:
-            await cosmos_service.initialize_database()
-            cosmos_stats = await cosmos_service.get_blob_sync_stats()
-        except Exception as e:
-            cosmos_stats = {"total_blob_documents": 0, "total_blob_chunks": 0}
-            logger.error(f"❌ Cosmos 통계 조회 실패: {e}")
-        
-        # 동기화 백분율 계산
-        synced_count = cosmos_stats.get("total_blob_documents", 0)
-        sync_percentage = (synced_count / blob_count * 100) if blob_count > 0 else 0
-        
-        return jsonify({
-            "success": True,
-            "status": {
-                "blob_storage_files": blob_count,
-                "cosmos_synced_documents": synced_count,
-                "cosmos_chunks": cosmos_stats.get("total_blob_chunks", 0),
-                "sync_percentage": round(sync_percentage, 2),
-                "not_synced_count": blob_count - synced_count
-            },
-            "blob_files_sample": [f["name"] for f in blob_files[:5]],  # 첫 5개 파일명
-            "timestamp": datetime.now().isoformat()
-        })
-        
-    except Exception as e:
-        logger.error(f"❌ 상태 확인 실패: {str(e)}")
-        return jsonify({
-            "success": False,
-            "error": str(e),
-            "timestamp": datetime.now().isoformat()
-        }), 500
-
-@blob_sync_bp.route('/sync-simple', methods=['POST'])
-@async_route
-async def sync_simple():
-    """간단한 동기화 - 텍스트 파일만"""
-    try:
-        from services.azure_storage_service import AzureStorageService
-        from services.cosmos_service import CosmosVectorService
-        
-        storage_service = AzureStorageService()
-        cosmos_service = CosmosVectorService()
-        
+        cosmos_service.set_openai_service(openai_service)
         await cosmos_service.initialize_database()
         
-        # Blob Storage에서 텍스트 파일만 가져오기
-        logger.info("🔍 텍스트 파일 검색 중...")
-        all_files = await storage_service.list_files()
-        text_files = [f for f in all_files if f['name'].lower().endswith(('.txt', '.md'))]
+        # Get all files from Blob Storage
+        logger.info("🔍 Fetching files from Blob Storage...")
+        files = await storage_service.list_files()
         
         results = {
             "processed_files": [],
             "failed_files": [],
-            "total_found": len(text_files),
-            "skipped_files": []
+            "skipped_files": [],
+            "total_found": len(files),
+            "total_chunks_created": 0
         }
         
-        for file_info in text_files[:5]:  # 처음 5개만 처리
+        for file_info in files:
             try:
                 filename = file_info['name']
-                logger.info(f"📄 처리 중: {filename}")
+                logger.info(f"📄 Processing: {filename}")
                 
-                # 이미 존재하는지 확인
-                exists = await cosmos_service.check_file_exists(filename)
-                if exists:
-                    results["skipped_files"].append(filename)
-                    logger.info(f"⏭️ 건너뛰기 (이미 존재): {filename}")
+                # Check if file format is supported
+                if not doc_processor.validate_file_format(filename):
+                    logger.info(f"⏭️ Skipping unsupported format: {filename}")
+                    results["skipped_files"].append({
+                        "filename": filename,
+                        "reason": "unsupported_format"
+                    })
                     continue
                 
-                # 파일 다운로드
-                file_content = await storage_service.download_file(filename)
+                # Check if already exists in Cosmos DB
+                existing = await cosmos_service.check_file_exists(filename)
+                if existing:
+                    logger.info(f"⏭️ Skipping existing file: {filename}")
+                    results["skipped_files"].append({
+                        "filename": filename,
+                        "reason": "already_exists"
+                    })
+                    continue
                 
-                # 텍스트 디코딩
-                try:
-                    text_content = file_content.decode('utf-8')
-                except UnicodeDecodeError:
-                    text_content = file_content.decode('latin-1')
-                
-                # Cosmos DB에 저장
-                doc_id = await cosmos_service.store_blob_document(
-                    filename=filename,
-                    content=text_content,
-                    metadata={
-                        "file_size": file_info.get('size', 0),
-                        "content_type": "text/plain",
-                        "sync_method": "simple"
-                    }
+                # Process file
+                chunk_count = await process_single_file_with_chunks(
+                    storage_service, cosmos_service, openai_service, 
+                    doc_processor, filename, file_info
                 )
                 
-                results["processed_files"].append({
-                    "filename": filename,
-                    "document_id": doc_id,
-                    "size": file_info.get('size', 0)
-                })
-                
-                logger.info(f"✅ 완료: {filename}")
+                if chunk_count > 0:
+                    results["processed_files"].append({
+                        "filename": filename,
+                        "chunks_created": chunk_count,
+                        "file_size": file_info.get('size', 0)
+                    })
+                    results["total_chunks_created"] += chunk_count
+                    logger.info(f"✅ Successfully processed: {filename} ({chunk_count} chunks)")
+                else:
+                    results["failed_files"].append({
+                        "filename": filename,
+                        "error": "no_chunks_created"
+                    })
                 
             except Exception as e:
-                logger.error(f"❌ 파일 처리 실패 {filename}: {str(e)}")
+                logger.error(f"❌ Failed to process {filename}: {str(e)}")
                 results["failed_files"].append({
                     "filename": filename,
                     "error": str(e)
@@ -215,13 +109,13 @@ async def sync_simple():
         
         return jsonify({
             "success": True,
-            "message": f"{len(results['processed_files'])} 텍스트 파일 동기화 완료",
+            "message": f"{len(results['processed_files'])} 파일 동기화 완료",
             "results": results,
             "timestamp": datetime.now().isoformat()
         })
         
     except Exception as e:
-        logger.error(f"❌ 간단 동기화 실패: {str(e)}")
+        logger.error(f"❌ Bulk sync failed: {str(e)}")
         return jsonify({
             "success": False,
             "error": str(e),
@@ -231,19 +125,218 @@ async def sync_simple():
 @blob_sync_bp.route('/sync-file', methods=['POST'])
 @async_route
 async def sync_single_file():
-    """특정 파일 하나만 동기화"""
+    """Sync specific file"""
     try:
         data = request.get_json()
-        filename = data.get('filename') if data else None
+        filename = data.get('filename')
         
         if not filename:
+            return jsonify({"error": "filename required"}), 400
+        
+        logger.info(f"🎯 Processing single file: {filename}")
+        
+        # Service initialization
+        from services.azure_storage_service import AzureStorageService
+        from services.cosmos_service import CosmosVectorService
+        from services.azure_openai_service import AzureOpenAIService
+        from services.document_processor import DocumentProcessor
+        
+        storage_service = AzureStorageService()
+        cosmos_service = CosmosVectorService()
+        openai_service = AzureOpenAIService()
+        doc_processor = DocumentProcessor()
+        
+        cosmos_service.set_openai_service(openai_service)
+        await cosmos_service.initialize_database()
+        
+        # Check if file already exists
+        existing = await cosmos_service.check_file_exists(filename)
+        if existing:
+            return jsonify({
+                "success": True,
+                "status": "already_synced",
+                "message": f"파일이 이미 동기화되어 있습니다: {filename}",
+                "timestamp": datetime.now().isoformat()
+            })
+        
+        # Get file info
+        file_info = await storage_service.get_file_info(filename)
+        if not file_info:
+            return jsonify({"error": f"파일을 찾을 수 없습니다: {filename}"}), 404
+        
+        # Process file
+        chunk_count = await process_single_file_with_chunks(
+            storage_service, cosmos_service, openai_service, 
+            doc_processor, filename, file_info
+        )
+        
+        if chunk_count > 0:
+            return jsonify({
+                "success": True,
+                "message": f"파일 '{filename}' 동기화 완료",
+                "document_id": f"blob_{filename}",
+                "chunks_created": chunk_count,
+                "content_length": file_info.get('size', 0),
+                "timestamp": datetime.now().isoformat()
+            })
+        else:
             return jsonify({
                 "success": False,
-                "error": "filename 필드가 필요합니다",
-                "example": {"filename": "document.txt"},
+                "error": "텍스트 추출 또는 청킹 실패",
+                "filename": filename,
                 "timestamp": datetime.now().isoformat()
-            }), 400
+            }), 500
         
+    except Exception as e:
+        logger.error(f"❌ Single file sync failed: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "timestamp": datetime.now().isoformat()
+        }), 500
+
+@blob_sync_bp.route('/force-sync-file', methods=['POST'])
+@async_route
+async def force_sync_single_file():
+    """Force re-sync specific file, ignoring 'already exists' check"""
+    try:
+        data = request.get_json()
+        filename = data.get('filename')
+        
+        if not filename:
+            return jsonify({"error": "filename required"}), 400
+        
+        logger.info(f"🎯 FORCE Processing single file: {filename}")
+        
+        from services.azure_storage_service import AzureStorageService
+        from services.cosmos_service import CosmosVectorService
+        from services.azure_openai_service import AzureOpenAIService
+        from services.document_processor import DocumentProcessor
+        
+        storage_service = AzureStorageService()
+        cosmos_service = CosmosVectorService()
+        openai_service = AzureOpenAIService()
+        doc_processor = DocumentProcessor()
+        
+        cosmos_service.set_openai_service(openai_service)
+        await cosmos_service.initialize_database()
+        
+        # Get file info
+        file_info = await storage_service.get_file_info(filename)
+        if not file_info:
+            return jsonify({"error": f"File not found: {filename}"}), 404
+        
+        # FORCE process file (ignore existing check)
+        chunk_count = await process_single_file_with_chunks(
+            storage_service, cosmos_service, openai_service, 
+            doc_processor, filename, file_info
+        )
+        
+        return jsonify({
+            "success": True,
+            "message": f"FORCE synced '{filename}'",
+            "chunks_created": chunk_count,
+            "timestamp": datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        logger.error(f"❌ FORCE single file sync failed: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "timestamp": datetime.now().isoformat()
+        }), 500
+
+@blob_sync_bp.route('/force-sync-all', methods=['POST'])
+@async_route
+async def force_sync_all_blobs():
+    """Force re-sync all files, ignoring 'already exists' check"""
+    try:
+        logger.info("🚀 Starting FORCE bulk blob sync (ignoring existing files)...")
+        
+        from services.azure_storage_service import AzureStorageService
+        from services.cosmos_service import CosmosVectorService
+        from services.azure_openai_service import AzureOpenAIService
+        from services.document_processor import DocumentProcessor
+        
+        storage_service = AzureStorageService()
+        cosmos_service = CosmosVectorService()
+        openai_service = AzureOpenAIService()
+        doc_processor = DocumentProcessor()
+        
+        cosmos_service.set_openai_service(openai_service)
+        await cosmos_service.initialize_database()
+        
+        files = await storage_service.list_files()
+        
+        results = {
+            "processed_files": [],
+            "failed_files": [],
+            "skipped_files": [],
+            "total_found": len(files),
+            "total_chunks_created": 0
+        }
+        
+        for file_info in files:
+            try:
+                filename = file_info['name']
+                logger.info(f"📄 FORCE Processing: {filename}")
+                
+                if not doc_processor.validate_file_format(filename):
+                    logger.info(f"⏭️ Skipping unsupported format: {filename}")
+                    results["skipped_files"].append({
+                        "filename": filename,
+                        "reason": "unsupported_format"
+                    })
+                    continue
+                
+                # FORCE process file (ignore existing check)
+                chunk_count = await process_single_file_with_chunks(
+                    storage_service, cosmos_service, openai_service, 
+                    doc_processor, filename, file_info
+                )
+                
+                if chunk_count > 0:
+                    results["processed_files"].append({
+                        "filename": filename,
+                        "chunks_created": chunk_count,
+                        "file_size": file_info.get('size', 0)
+                    })
+                    results["total_chunks_created"] += chunk_count
+                    logger.info(f"✅ FORCE processed: {filename} ({chunk_count} chunks)")
+                else:
+                    results["failed_files"].append({
+                        "filename": filename,
+                        "error": "no_chunks_created"
+                    })
+                
+            except Exception as e:
+                logger.error(f"❌ Failed to FORCE process {filename}: {str(e)}")
+                results["failed_files"].append({
+                    "filename": filename,
+                    "error": str(e)
+                })
+        
+        return jsonify({
+            "success": True,
+            "message": f"FORCE synced {len(results['processed_files'])} files",
+            "results": results,
+            "timestamp": datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        logger.error(f"❌ FORCE bulk sync failed: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "timestamp": datetime.now().isoformat()
+        }), 500
+
+@blob_sync_bp.route('/status', methods=['GET'])
+@async_route
+async def sync_status():
+    """Check sync status"""
+    try:
         from services.azure_storage_service import AzureStorageService
         from services.cosmos_service import CosmosVectorService
         
@@ -252,95 +345,235 @@ async def sync_single_file():
         
         await cosmos_service.initialize_database()
         
-        logger.info(f"📄 단일 파일 동기화: {filename}")
+        # Blob Storage file count
+        blob_files = await storage_service.list_files()
+        blob_count = len(blob_files)
         
-        # 파일 존재 확인
-        if not await storage_service.file_exists(filename):
-            return jsonify({
-                "success": False,
-                "error": f"파일이 Blob Storage에 존재하지 않습니다: {filename}",
-                "timestamp": datetime.now().isoformat()
-            }), 404
+        # Cosmos DB stats
+        cosmos_stats = await cosmos_service.get_blob_sync_stats()
         
-        # 이미 동기화되었는지 확인
-        if await cosmos_service.check_file_exists(filename):
-            return jsonify({
-                "success": True,
-                "message": f"파일이 이미 동기화되어 있습니다: {filename}",
-                "status": "already_synced",
-                "timestamp": datetime.now().isoformat()
-            })
+        # Find unsynced files
+        not_synced = []
+        for file_info in blob_files:
+            filename = file_info['name']
+            exists = await cosmos_service.check_file_exists(filename)
+            if not exists:
+                not_synced.append(filename)
         
-        # 파일 다운로드 및 처리
+        # Sample file list
+        sample_files = [f['name'] for f in blob_files[:4]]
+        
+        return jsonify({
+            "success": True,
+            "status": {
+                "blob_storage_files": blob_count,
+                "cosmos_synced_documents": cosmos_stats.get('total_blob_documents', 0),
+                "cosmos_chunks": cosmos_stats.get('total_blob_chunks', 0),
+                "not_synced_count": len(not_synced),
+                "sync_percentage": ((blob_count - len(not_synced)) / blob_count * 100) if blob_count > 0 else 0
+            },
+            "blob_files_sample": sample_files,
+            "timestamp": datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        logger.error(f"❌ Status check failed: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "timestamp": datetime.now().isoformat()
+        }), 500
+
+@blob_sync_bp.route('/health', methods=['GET'])
+def health_check():
+    """Blob sync service health check"""
+    return jsonify({
+        "status": "healthy",
+        "service": "blob_sync",
+        "description": "Blob Storage to Cosmos DB synchronization",
+        "endpoints": [
+            "/health",
+            "/status", 
+            "/sync-all",
+            "/sync-file",
+            "/force-sync-file",
+            "/force-sync-all",
+            "/test-connection"
+        ],
+        "timestamp": datetime.now().isoformat()
+    })
+
+@blob_sync_bp.route('/test-connection', methods=['GET'])
+@async_route
+async def test_connection():
+    """Test connections"""
+    try:
+        from services.azure_storage_service import AzureStorageService
+        from services.cosmos_service import CosmosVectorService
+        
+        storage_service = AzureStorageService()
+        cosmos_service = CosmosVectorService()
+        
+        # Test storage
+        storage_health = await storage_service.health_check()
+        
+        # Test cosmos
+        cosmos_health = await cosmos_service.health_check()
+        
+        return jsonify({
+            "success": True,
+            "storage_service": storage_health,
+            "cosmos_service": cosmos_health,
+            "timestamp": datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "timestamp": datetime.now().isoformat()
+        }), 500
+
+# Helper functions
+async def process_single_file_with_chunks(
+    storage_service, cosmos_service, openai_service, 
+    doc_processor, filename, file_info
+) -> int:
+    """Process single file and create chunks"""
+    try:
+        # 1. Download file from Blob
+        logger.info(f"📥 Downloading {filename}...")
         file_content = await storage_service.download_file(filename)
         
-        # 간단한 텍스트 처리
-        if filename.lower().endswith(('.txt', '.md')):
-            try:
-                text_content = file_content.decode('utf-8')
-            except UnicodeDecodeError:
-                text_content = file_content.decode('latin-1')
-        else:
-            text_content = f"Binary file: {filename} (size: {len(file_content)} bytes)"
+        # 2. Extract text
+        logger.info(f"📝 Extracting text from {filename}...")
+        text_content = await doc_processor.extract_text_from_file(file_content, filename)
         
-        # Cosmos DB에 저장
-        doc_id = await cosmos_service.store_blob_document(
+        if len(text_content.strip()) < 20:
+            logger.warning(f"⚠️ Very little text extracted from {filename}: {len(text_content)} chars")
+            logger.warning(f"Text preview: {text_content[:100]}...")
+            
+        # 3. Store full document first
+        await cosmos_service.store_blob_document(
             filename=filename,
             content=text_content,
             metadata={
-                "file_size": len(file_content),
-                "sync_method": "manual"
+                "file_size": file_info.get('size', 0),
+                "last_modified": file_info.get('last_modified'),
+                "content_type": file_info.get('content_type'),
+                "source": "blob_storage",
+                "text_length": len(text_content)
             }
         )
         
-        return jsonify({
-            "success": True,
-            "message": f"파일 '{filename}' 동기화 완료",
-            "document_id": doc_id,
-            "content_length": len(text_content),
-            "timestamp": datetime.now().isoformat()
-        })
+        # 4. Create text chunks
+        logger.info(f"✂️ Creating chunks for {filename}...")
+        chunks = split_text_into_chunks(text_content, max_chunk_size=800, overlap=100)
+        
+        if not chunks:
+            logger.warning(f"⚠️ No chunks created for {filename}")
+            return 0
+        
+        # 5. Process each chunk with embeddings
+        chunk_count = 0
+        for i, chunk in enumerate(chunks):
+            if len(chunk.strip()) < 10:  # Skip very small chunks
+                continue
+                
+            # Generate embedding
+            logger.debug(f"🔢 Generating embedding for chunk {i} of {filename}")
+            embedding = await openai_service.generate_embeddings(chunk)
+            
+            if embedding:
+                # Store chunk in Cosmos DB
+                await cosmos_service.store_document_chunk(
+                    file_name=filename,
+                    chunk_text=chunk,
+                    embedding=embedding,
+                    chunk_index=i,
+                    metadata={
+                        "file_size": file_info.get('size', 0),
+                        "last_modified": file_info.get('last_modified'),
+                        "content_type": file_info.get('content_type'),
+                        "source": "blob_storage",
+                        "chunk_length": len(chunk)
+                    }
+                )
+                chunk_count += 1
+                logger.debug(f"✅ Stored chunk {i} for {filename}")
+            else:
+                logger.warning(f"⚠️ Failed to generate embedding for chunk {i} of {filename}")
+        
+        logger.info(f"✅ Created {chunk_count} chunks for {filename}")
+        return chunk_count
         
     except Exception as e:
-        logger.error(f"❌ 단일 파일 동기화 실패: {str(e)}")
-        return jsonify({
-            "success": False,
-            "error": str(e),
-            "timestamp": datetime.now().isoformat()
-        }), 500
+        logger.error(f"❌ Failed to process {filename}: {str(e)}")
+        raise
 
-@blob_sync_bp.route('/list-synced', methods=['GET'])
-@async_route
-async def list_synced_files():
-    """동기화된 파일 목록"""
-    try:
-        from services.cosmos_service import CosmosVectorService
-        
-        cosmos_service = CosmosVectorService()
-        await cosmos_service.initialize_database()
-        
-        synced_files = await cosmos_service.list_blob_files()
-        
-        return jsonify({
-            "success": True,
-            "synced_files": synced_files,
-            "count": len(synced_files),
-            "timestamp": datetime.now().isoformat()
-        })
-        
-    except Exception as e:
-        logger.error(f"❌ 동기화된 파일 목록 조회 실패: {str(e)}")
-        return jsonify({
-            "success": False,
-            "error": str(e),
-            "timestamp": datetime.now().isoformat()
-        }), 500
-
-# 에러 핸들러
-@blob_sync_bp.errorhandler(500)
-def internal_error(error):
-    return jsonify({
-        'success': False,
-        'error': 'Blob sync service error',
-        'timestamp': datetime.now().isoformat()
-    }), 500
+def split_text_into_chunks(text: str, max_chunk_size: int = 800, overlap: int = 100) -> list:
+    """Split text into chunks"""
+    if not text or len(text.strip()) < 20:
+        return []
+    
+    chunks = []
+    
+    # Split by paragraphs first
+    paragraphs = text.split('\n\n')
+    
+    current_chunk = []
+    current_length = 0
+    
+    for paragraph in paragraphs:
+        paragraph = paragraph.strip()
+        if not paragraph:
+            continue
+            
+        # If paragraph is too large, split by sentences
+        if len(paragraph) > max_chunk_size:
+            sentences = paragraph.split('. ')
+            for sentence in sentences:
+                sentence = sentence.strip()
+                if not sentence:
+                    continue
+                    
+                if current_length + len(sentence) + 2 <= max_chunk_size:
+                    current_chunk.append(sentence)
+                    current_length += len(sentence) + 2
+                else:
+                    # Save current chunk
+                    if current_chunk:
+                        chunks.append('. '.join(current_chunk))
+                        
+                        # Keep last sentence for overlap
+                        if len(current_chunk) > 1:
+                            current_chunk = [current_chunk[-1]]
+                            current_length = len(current_chunk[0]) + 2
+                        else:
+                            current_chunk = []
+                            current_length = 0
+                    
+                    current_chunk.append(sentence)
+                    current_length = len(sentence) + 2
+        else:
+            # Paragraph is small enough, add directly
+            if current_length + len(paragraph) + 2 <= max_chunk_size:
+                current_chunk.append(paragraph)
+                current_length += len(paragraph) + 2
+            else:
+                # Save current chunk and start new
+                if current_chunk:
+                    chunks.append('\n\n'.join(current_chunk))
+                
+                current_chunk = [paragraph]
+                current_length = len(paragraph)
+    
+    # Save last chunk
+    if current_chunk:
+        chunks.append('\n\n'.join(current_chunk))
+    
+    # Filter out very short chunks
+    filtered_chunks = [chunk for chunk in chunks if len(chunk.strip()) > 50]
+    
+    logger.info(f"📝 Text split into {len(filtered_chunks)} chunks")
+    return filtered_chunks
