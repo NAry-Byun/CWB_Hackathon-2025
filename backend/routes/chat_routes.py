@@ -1,4 +1,4 @@
-# routes/chat_routes.py - Complete Enhanced Chat Routes with Notion Direct Edit + Content Reading
+# routes/chat_routes.py - COMPLETE MERGED Enhanced Chat Routes with Full Notion Integration
 
 from flask import Blueprint, request, jsonify
 import asyncio
@@ -7,6 +7,8 @@ import os
 import logging
 import re
 from datetime import datetime
+from typing import Dict, Any
+from services.notion_service import NotionService
 
 # ─── Allow importing from project root ────────────────────────────────────────
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -105,9 +107,58 @@ def _handle_cors():
     response.headers.add("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
     return response
 
-# ─── Notion Direct Edit Helper ───────────────────────────────────────────────
+# ─── Enhanced Notion Integration Functions ────────────────────────────────────
+
+def detect_notion_write_request(user_message: str) -> Dict[str, Any]:
+    """Detect if user wants to write to Notion and extract details (AUTO-WRITE)"""
+    
+    write_patterns = [
+        r"write.*?(?:to|in|on)\s+(?:notion|page)",
+        r"add.*?(?:to|in|on)\s+(?:notion|page)", 
+        r"save.*?(?:to|in|on)\s+(?:notion|page)",
+        r"append.*?(?:to|in|on)\s+(?:notion|page)",
+        r"put.*?(?:in|on)\s+(?:notion|page)",
+        r"write.*?(?:this|that|summary|response).*?(?:to|in|on)\s+(?:notion|page)",
+        r"save.*?(?:this|that|summary|response).*?(?:to|in|on)\s+(?:notion|page)"
+    ]
+    
+    is_write_request = any(re.search(pattern, user_message.lower()) for pattern in write_patterns)
+    
+    if not is_write_request:
+        return {"is_write_request": False}
+    
+    # Extract page title with enhanced patterns
+    page_patterns = [
+        r"(?:Meeting\s+Calendar\s*\([^)]+\))",      # Meeting Calendar (July 2025)
+        r"([A-Z][A-Za-z\s]+\s*\([^)]+\))",         # Any Title (Something)
+        r"page\s+['\"]([^'\"]+)['\"]",              # page "Title"
+        r"notion\s+['\"]([^'\"]+)['\"]",            # notion "Title"
+        r"(?:to|in|on)\s+([A-Z][A-Za-z\s]{5,30})",  # Generic title after "to/in/on"
+        r"(?:to|in|on)\s+(?:my\s+)?([A-Za-z\s]{5,30})\s+(?:notion\s+)?page" # "to my calendar page"
+    ]
+    
+    target_page = None
+    for pattern in page_patterns:
+        match = re.search(pattern, user_message, re.IGNORECASE)
+        if match:
+            if match.groups():
+                target_page = match.group(1).strip()
+            else:
+                target_page = match.group(0).strip()
+            
+            # Clean up common prefixes
+            target_page = target_page.replace('my ', '').replace('the ', '').strip()
+            break
+    
+    return {
+        "is_write_request": True,
+        "target_page": target_page,
+        "original_message": user_message,
+        "write_type": "auto_write"
+    }
+
 def _parse_notion_edit_request(user_message: str) -> dict:
-    """Parse user message to detect direct Notion edit requests."""
+    """Parse user message to detect direct Notion edit requests (DIRECT EDIT)."""
     patterns = [
         r'add\s+(?:text\s+)?["\'](.+?)["\'] to (?:my\s+)?(.+?)\s+notion\s+page',
         r'add\s+["\'](.+?)["\'] to (?:my\s+)?(.+?)\s+page',
@@ -143,16 +194,61 @@ def _parse_notion_edit_request(user_message: str) -> dict:
                 'content': content,
                 'page_title': page_title,
                 'formatting': formatting,
-                'original_message': user_message
+                'original_message': user_message,
+                'edit_type': 'direct_edit'
             }
     
     return {'is_notion_edit': False}
+
+async def handle_notion_write_request(user_message: str, ai_response: str, notion_request: Dict[str, Any]) -> Dict[str, Any]:
+    """Handle automatic writing of AI response to Notion"""
+    try:
+        if not notion_service:
+            return {
+                "success": False,
+                "error": "Notion service not available"
+            }
+        
+        target_page = notion_request.get("target_page")
+        
+        if not target_page:
+            return {
+                "success": False,
+                "error": "Could not identify target Notion page",
+                "suggestion": "Please specify a page like 'Meeting Calendar (July 2025)'"
+            }
+        
+        logger.info(f"🤖 Auto-writing AI response to Notion page: '{target_page}'")
+        
+        # Use the enhanced write method if available
+        if hasattr(notion_service, 'write_chatbot_response_to_page'):
+            result = await notion_service.write_chatbot_response_to_page(
+                page_title=target_page,
+                chatbot_response=ai_response,
+                user_question=user_message
+            )
+        else:
+            # Fallback to basic method
+            result = notion_service.add_text_by_page_title(
+                page_title=target_page,
+                text=f"**User Question:** {user_message}\n\n**AI Response:**\n{ai_response}",
+                formatting='paragraph'
+            )
+        
+        return result
+        
+    except Exception as e:
+        logger.error(f"❌ Auto-write to Notion failed: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
 
 # ─── Main Chat Endpoints ──────────────────────────────────────────────────────
 
 @chat_bp.route('/chat', methods=['POST', 'OPTIONS'])
 def chat():
-    """Full chat with Notion direct edit detection, vector search, Notion search, and context."""
+    """Enhanced full chat with integrated Notion auto-write + direct edit detection."""
     if request.method == 'OPTIONS':
         return _handle_cors()
 
@@ -169,7 +265,7 @@ def chat():
     logger.info(f"💬 Full chat: {user_message}")
 
     try:
-        # 🟣 PRIORITY: Check for direct Notion edit requests first
+        # 🟣 PRIORITY 1: Check for direct Notion edit requests first
         notion_edit_check = _parse_notion_edit_request(user_message)
         
         if notion_edit_check['is_notion_edit'] and notion_service:
@@ -263,7 +359,52 @@ Please try again or check your Notion integration settings."""
                 
                 return _success_response(result_data, "Notion edit failed due to error")
 
-        # If not a direct Notion edit, continue with normal chat pipeline
+        # 🟣 PRIORITY 2: Check for auto-write requests (AI response to Notion)
+        notion_auto_write_check = detect_notion_write_request(user_message)
+        
+        if notion_auto_write_check['is_write_request']:
+            logger.info(f"🤖 AUTO-WRITE REQUEST detected: Write response to '{notion_auto_write_check.get('target_page')}'")
+            
+            # Generate AI response first
+            result_data = asyncio.run(_process_full_chat(user_message, context))
+            ai_response = result_data.get("assistant_message", "")
+            
+            # Then write it to Notion automatically
+            notion_result = asyncio.run(handle_notion_write_request(user_message, ai_response, notion_auto_write_check))
+            
+            # Enhance response with Notion confirmation
+            if notion_result.get("success"):
+                page_url = notion_result.get("page_url", "")
+                page_title = notion_auto_write_check.get("target_page", "")
+                
+                result_data["assistant_message"] += f"\n\n✅ **Your response has been automatically saved to your Notion page: '{page_title}'**"
+                if page_url:
+                    result_data["assistant_message"] += f"\n🔗 [View in Notion]({page_url})"
+                
+                result_data["notion_integration"] = {
+                    "requested": True,
+                    "success": True,
+                    "target_page": page_title,
+                    "result": notion_result,
+                    "type": "auto_write"
+                }
+            else:
+                error_msg = notion_result.get("error", "Unknown error")
+                result_data["assistant_message"] += f"\n\n❌ **Failed to save to Notion:** {error_msg}"
+                
+                result_data["notion_integration"] = {
+                    "requested": True,
+                    "success": False,
+                    "target_page": notion_auto_write_check.get("target_page"),
+                    "error": error_msg,
+                    "type": "auto_write"
+                }
+            
+            result_data["content"] = result_data["assistant_message"]
+            logger.info(f"✅ Auto-write chat completed: Notion {'success' if notion_result.get('success') else 'failed'}")
+            return _success_response(result_data, "Chat response with auto-write completed")
+
+        # If neither direct edit nor auto-write, continue with normal chat pipeline
         logger.info(f"🔄 Proceeding with normal chat pipeline")
         result_data = asyncio.run(_process_full_chat(user_message, context))
         return _success_response(result_data, "Chat response generated")
@@ -373,6 +514,46 @@ def notion_search():
         logger.error(f"❌ Notion search error: {e}", exc_info=True)
         return _error_response(f"Notion search failed: {str(e)}", 500)
 
+@chat_bp.route('/notion/write-response', methods=['POST', 'OPTIONS'])
+def notion_write_response():
+    """Enhanced endpoint for writing chatbot responses to Notion."""
+    if request.method == 'OPTIONS':
+        return _handle_cors()
+
+    if not notion_service:
+        return _error_response("Notion service not available", 503)
+
+    data = request.get_json()
+    if not data or 'page_title' not in data or 'response' not in data:
+        return _error_response("Fields 'page_title' and 'response' are required", 400)
+
+    page_title = data['page_title']
+    response_text = data['response']
+    user_question = data.get('user_question', '')
+
+    try:
+        logger.info(f"🤖 Writing chatbot response to '{page_title}': {len(response_text)} chars")
+        
+        if hasattr(notion_service, 'write_chatbot_response_to_page'):
+            result = asyncio.run(notion_service.write_chatbot_response_to_page(
+                page_title, response_text, user_question
+            ))
+        else:
+            # Fallback to basic method
+            content = f"**User Question:** {user_question}\n\n**AI Response:**\n{response_text}" if user_question else response_text
+            result = notion_service.add_text_by_page_title(page_title, content, 'paragraph')
+        
+        if result['success']:
+            logger.info(f"✅ Chatbot response written to Notion: {result.get('page_title')}")
+        else:
+            logger.warning(f"❌ Failed to write chatbot response: {result.get('error')}")
+        
+        return _success_response(result, "Chatbot response write completed")
+
+    except Exception as e:
+        logger.error(f"❌ Chatbot response write error: {e}", exc_info=True)
+        return _error_response(f"Chatbot response write failed: {str(e)}", 500)
+
 # ─── Health and Test Endpoints ────────────────────────────────────────────────
 
 @chat_bp.route('/health', methods=['GET', 'OPTIONS'])
@@ -390,10 +571,16 @@ def chat_health():
             "notion": notion_service is not None,
             "web_scraper": web_scraper_service is not None
         },
+        "notion_features": {
+            "direct_edit": True,
+            "auto_write": True,
+            "enhanced_search": hasattr(notion_service, 'search_pages_and_content') if notion_service else False,
+            "long_text_writing": hasattr(notion_service, 'write_long_text_to_page') if notion_service else False
+        },
         "endpoints": [
             "/chat", "/simple", "/health", "/test", "/fix-embeddings",
             "/scrape-url", "/scrape-multiple", "/scrape-test",
-            "/notion/add-text", "/notion/search"
+            "/notion/add-text", "/notion/search", "/notion/write-response"
         ]
     })
 
@@ -404,10 +591,17 @@ def test_endpoint():
         return _handle_cors()
 
     return jsonify({
-        "status": "Chat routes working",
-        "message": "Test endpoint successful",
+        "status": "Enhanced Chat routes working",
+        "message": "Test endpoint successful with full Notion integration",
         "timestamp": datetime.now().isoformat(),
-        "backend_url": "http://localhost:5000"
+        "backend_url": "http://localhost:5000",
+        "features": [
+            "Direct Notion Edit",
+            "Auto-write AI responses to Notion", 
+            "Enhanced content search",
+            "Vector similarity search",
+            "Full document integration"
+        ]
     })
 
 # ─── Other Endpoints ──────────────────────────────────────────────────────────
@@ -632,7 +826,10 @@ Source: {meeting.get('source_page', 'Unknown')}""",
         
         # For non-month-specific queries or fallback, use enhanced search
         try:
-            if hasattr(notion_service, 'search_meeting_pages'):
+            # Use enhanced search if available
+            if hasattr(notion_service, 'search_pages_and_content'):
+                pages = notion_service.search_pages_and_content(query, limit=10)
+            elif hasattr(notion_service, 'search_meeting_pages'):
                 pages = notion_service.search_meeting_pages(query)
             else:
                 pages = notion_service.search_pages(query)
