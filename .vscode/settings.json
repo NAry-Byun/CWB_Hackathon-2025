@@ -1,6 +1,9 @@
 {
-    "azureFunctions.deploySubpath": "backend\\azure_functions",
-    "azureFunctions.projectLanguage": "Custom",
+    "azureFunctions.deploySubpath": ".",
+    "azureFunctions.projectLanguage": "Python",
     "azureFunctions.projectRuntime": "~4",
-    "debug.internalConsoleOptions": "neverOpen"
+    "debug.internalConsoleOptions": "neverOpen",
+    "azureFunctions.scmDoBuildDuringDeployment": true,
+    "azureFunctions.pythonVenv": ".venv",
+    "azureFunctions.projectLanguageModel": 2
 }
