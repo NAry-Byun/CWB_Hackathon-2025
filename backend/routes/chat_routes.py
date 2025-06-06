@@ -1,4 +1,4 @@
-# routes/chat_routes.py - COMPLETE MERGED Enhanced Chat Routes with Full Notion Integration
+# routes/chat_routes.py - FIXED Complete Enhanced Chat Routes with Full Notion Integration
 
 from flask import Blueprint, request, jsonify
 import asyncio
@@ -7,8 +7,7 @@ import os
 import logging
 import re
 from datetime import datetime
-from typing import Dict, Any
-from services.notion_service import NotionService
+from typing import Dict, Any, List, Optional
 
 # ─── Allow importing from project root ────────────────────────────────────────
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -51,12 +50,16 @@ openai_service = None
 cosmos_service = None
 notion_service = None
 web_scraper_service = None
+services_initialized = False
 
 def initialize_services():
-    """Initialize all available services."""
-    global openai_service, cosmos_service, notion_service, web_scraper_service
+    """Initialize all available services safely."""
+    global openai_service, cosmos_service, notion_service, web_scraper_service, services_initialized
 
-    # Initialize OpenAI Service
+    if services_initialized:
+        return
+
+    # Initialize OpenAI Service (Required)
     if AzureOpenAIService:
         try:
             openai_service = AzureOpenAIService()
@@ -65,16 +68,17 @@ def initialize_services():
             logger.error(f"❌ Failed to initialize AzureOpenAIService: {e}")
             openai_service = None
 
-    # Initialize Cosmos Service
-    if CosmosVectorService:
+    # Initialize Cosmos Service (Optional)
+    if CosmosVectorService and openai_service:
         try:
             cosmos_service = CosmosVectorService()
+            cosmos_service.set_openai_service(openai_service)
             logger.info("✅ CosmosVectorService initialized")
         except Exception as e:
             logger.error(f"❌ Failed to initialize CosmosVectorService: {e}")
             cosmos_service = None
 
-    # Initialize Notion Service
+    # Initialize Notion Service (Optional)
     if NotionService:
         try:
             notion_service = NotionService()
@@ -83,7 +87,7 @@ def initialize_services():
             logger.error(f"❌ Failed to initialize NotionService: {e}")
             notion_service = None
 
-    # Initialize Web Scraper Service
+    # Initialize Web Scraper Service (Optional)
     if EnhancedWebScraperService:
         try:
             web_scraper_service = EnhancedWebScraperService(
@@ -94,6 +98,9 @@ def initialize_services():
         except Exception as e:
             logger.error(f"❌ Failed to initialize EnhancedWebScraperService: {e}")
             web_scraper_service = None
+
+    services_initialized = True
+    logger.info("🚀 All services initialization completed")
 
 # Initialize services on import
 initialize_services()
@@ -200,8 +207,8 @@ def _parse_notion_edit_request(user_message: str) -> dict:
     
     return {'is_notion_edit': False}
 
-async def handle_notion_write_request(user_message: str, ai_response: str, notion_request: Dict[str, Any]) -> Dict[str, Any]:
-    """Handle automatic writing of AI response to Notion"""
+def handle_notion_write_request_sync(user_message: str, ai_response: str, notion_request: Dict[str, Any]) -> Dict[str, Any]:
+    """Handle automatic writing of AI response to Notion - synchronous version"""
     try:
         if not notion_service:
             return {
@@ -220,20 +227,33 @@ async def handle_notion_write_request(user_message: str, ai_response: str, notio
         
         logger.info(f"🤖 Auto-writing AI response to Notion page: '{target_page}'")
         
-        # Use the enhanced write method if available
-        if hasattr(notion_service, 'write_chatbot_response_to_page'):
-            result = await notion_service.write_chatbot_response_to_page(
-                page_title=target_page,
-                chatbot_response=ai_response,
-                user_question=user_message
-            )
-        else:
-            # Fallback to basic method
+        # Use available method - all synchronous
+        if hasattr(notion_service, 'add_text_by_page_title'):
             result = notion_service.add_text_by_page_title(
                 page_title=target_page,
                 text=f"**User Question:** {user_message}\n\n**AI Response:**\n{ai_response}",
                 formatting='paragraph'
             )
+        else:
+            # Fallback to basic method
+            page = notion_service.get_page_by_title(target_page)
+            if page:
+                page_id = page['id']
+                success = notion_service.add_text_to_page(
+                    page_id, 
+                    f"**User Question:** {user_message}\n\n**AI Response:**\n{ai_response}", 
+                    'paragraph'
+                )
+                result = {
+                    "success": success,
+                    "page_title": target_page,
+                    "page_id": page_id
+                }
+            else:
+                result = {
+                    "success": False,
+                    "error": f"Page '{target_page}' not found"
+                }
         
         return result
         
@@ -243,6 +263,10 @@ async def handle_notion_write_request(user_message: str, ai_response: str, notio
             "success": False,
             "error": str(e)
         }
+
+async def handle_notion_write_request(user_message: str, ai_response: str, notion_request: Dict[str, Any]) -> Dict[str, Any]:
+    """Handle automatic writing of AI response to Notion - async wrapper"""
+    return handle_notion_write_request_sync(user_message, ai_response, notion_request)
 
 # ─── Main Chat Endpoints ──────────────────────────────────────────────────────
 
@@ -272,13 +296,35 @@ def chat():
             logger.info(f"🟣 DIRECT NOTION EDIT detected: '{notion_edit_check['content']}' -> '{notion_edit_check['page_title']}'")
             
             try:
-                result = notion_service.add_text_by_page_title(
-                    notion_edit_check['page_title'], 
-                    notion_edit_check['content'], 
-                    notion_edit_check['formatting']
-                )
+                # Check if the enhanced method exists
+                if hasattr(notion_service, 'add_text_by_page_title'):
+                    result = notion_service.add_text_by_page_title(
+                        notion_edit_check['page_title'], 
+                        notion_edit_check['content'], 
+                        notion_edit_check['formatting']
+                    )
+                else:
+                    # Fallback to basic add_text_to_page method
+                    page = notion_service.get_page_by_title(notion_edit_check['page_title'])
+                    if page:
+                        page_id = page['id']
+                        success = notion_service.add_text_to_page(
+                            page_id, 
+                            notion_edit_check['content'], 
+                            notion_edit_check['formatting']
+                        )
+                        result = {
+                            "success": success,
+                            "page_title": notion_edit_check['page_title'],
+                            "page_id": page_id
+                        }
+                    else:
+                        result = {
+                            "success": False,
+                            "error": f"Page '{notion_edit_check['page_title']}' not found"
+                        }
                 
-                if result['success']:
+                if result.get('success'):
                     response_text = f"""✅ **Content Added Successfully!**
 
 **Page**: {result.get('page_title', notion_edit_check['page_title'])}
@@ -365,12 +411,17 @@ Please try again or check your Notion integration settings."""
         if notion_auto_write_check['is_write_request']:
             logger.info(f"🤖 AUTO-WRITE REQUEST detected: Write response to '{notion_auto_write_check.get('target_page')}'")
             
-            # Generate AI response first
-            result_data = asyncio.run(_process_full_chat(user_message, context))
-            ai_response = result_data.get("assistant_message", "")
-            
-            # Then write it to Notion automatically
-            notion_result = asyncio.run(handle_notion_write_request(user_message, ai_response, notion_auto_write_check))
+            # Generate AI response first using event loop
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                result_data = loop.run_until_complete(_process_full_chat(user_message, context))
+                ai_response = result_data.get("assistant_message", "")
+                
+                # Then write it to Notion automatically
+                notion_result = loop.run_until_complete(handle_notion_write_request(user_message, ai_response, notion_auto_write_check))
+            finally:
+                loop.close()
             
             # Enhance response with Notion confirmation
             if notion_result.get("success"):
@@ -406,7 +457,12 @@ Please try again or check your Notion integration settings."""
 
         # If neither direct edit nor auto-write, continue with normal chat pipeline
         logger.info(f"🔄 Proceeding with normal chat pipeline")
-        result_data = asyncio.run(_process_full_chat(user_message, context))
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            result_data = loop.run_until_complete(_process_full_chat(user_message, context))
+        finally:
+            loop.close()
         return _success_response(result_data, "Chat response generated")
 
     except Exception as e:
@@ -430,7 +486,12 @@ def simple_chat():
     logger.info(f"💬 Simple chat: {user_message[:100]}")
 
     try:
-        response = asyncio.run(_simple_openai_call(user_message))
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            response = loop.run_until_complete(_simple_openai_call(user_message))
+        finally:
+            loop.close()
 
         result_data = {
             "assistant_message": response,
@@ -470,9 +531,26 @@ def notion_add_text():
     try:
         logger.info(f"🟣 Direct Notion API call: Adding '{content}' to '{page_title}'")
         
-        result = notion_service.add_text_by_page_title(page_title, content, formatting)
+        if hasattr(notion_service, 'add_text_by_page_title'):
+            result = notion_service.add_text_by_page_title(page_title, content, formatting)
+        else:
+            # Fallback method
+            page = notion_service.get_page_by_title(page_title)
+            if page:
+                page_id = page['id']
+                success = notion_service.add_text_to_page(page_id, content, formatting)
+                result = {
+                    "success": success,
+                    "page_title": page_title,
+                    "page_id": page_id
+                }
+            else:
+                result = {
+                    "success": False,
+                    "error": f"Page '{page_title}' not found"
+                }
         
-        if result['success']:
+        if result.get('success'):
             logger.info(f"✅ Direct Notion add successful: {result.get('page_title')}")
         else:
             logger.warning(f"❌ Direct Notion add failed: {result.get('error')}")
@@ -499,7 +577,10 @@ def notion_search():
     query = data['query']
 
     try:
-        pages = notion_service.search_pages(query)
+        if hasattr(notion_service, 'search_pages'):
+            pages = notion_service.search_pages(query)
+        else:
+            pages = []
         
         result = {
             "pages": pages,
@@ -534,16 +615,28 @@ def notion_write_response():
     try:
         logger.info(f"🤖 Writing chatbot response to '{page_title}': {len(response_text)} chars")
         
-        if hasattr(notion_service, 'write_chatbot_response_to_page'):
-            result = asyncio.run(notion_service.write_chatbot_response_to_page(
-                page_title, response_text, user_question
-            ))
-        else:
-            # Fallback to basic method
-            content = f"**User Question:** {user_question}\n\n**AI Response:**\n{response_text}" if user_question else response_text
-            result = notion_service.add_text_by_page_title(page_title, content, 'paragraph')
+        # Use synchronous methods only
+        content = f"**User Question:** {user_question}\n\n**AI Response:**\n{response_text}" if user_question else response_text
         
-        if result['success']:
+        if hasattr(notion_service, 'add_text_by_page_title'):
+            result = notion_service.add_text_by_page_title(page_title, content, 'paragraph')
+        else:
+            page = notion_service.get_page_by_title(page_title)
+            if page:
+                page_id = page['id']
+                success = notion_service.add_text_to_page(page_id, content, 'paragraph')
+                result = {
+                    "success": success,
+                    "page_title": page_title,
+                    "page_id": page_id
+                }
+            else:
+                result = {
+                    "success": False,
+                    "error": f"Page '{page_title}' not found"
+                }
+        
+        if result.get('success'):
             logger.info(f"✅ Chatbot response written to Notion: {result.get('page_title')}")
         else:
             logger.warning(f"❌ Failed to write chatbot response: {result.get('error')}")
@@ -616,11 +709,16 @@ def fix_embeddings():
         return _error_response("Services not available", 503)
 
     try:
-        result = asyncio.run(_fix_embeddings_async())
-        return _success_response(result, "임베딩 수정 완료")
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            result = loop.run_until_complete(_fix_embeddings_async())
+        finally:
+            loop.close()
+        return _success_response(result, "Embedding fix completed")
     except Exception as e:
-        logger.error(f"❌ 임베딩 수정 오류: {e}", exc_info=True)
-        return _error_response(f"임베딩 수정 실패: {str(e)}", 500)
+        logger.error(f"❌ Embedding fix error: {e}", exc_info=True)
+        return _error_response(f"Embedding fix failed: {str(e)}", 500)
 
 # ─── Async Helper Functions ───────────────────────────────────────────────────
 
@@ -637,8 +735,6 @@ async def _simple_openai_call(user_message: str) -> str:
             if isinstance(response, dict):
                 return response.get("assistant_message", str(response))
             return str(response)
-        elif openai_service and hasattr(openai_service, 'chat_completion'):
-            return await openai_service.chat_completion(user_message)
         else:
             return "OpenAI service is not properly configured."
     except Exception as e:
@@ -646,7 +742,7 @@ async def _simple_openai_call(user_message: str) -> str:
         return f"I apologize, but I encountered an error: {str(e)}"
 
 async def _process_full_chat(user_message: str, context: list) -> dict:
-    """Process chat with full pipeline: Notion search, embedding 생성, Cosmos 검색, then OpenAI."""
+    """Process chat with full pipeline: Notion search, embedding generation, Cosmos search, then OpenAI."""
     result_data = {
         "assistant_message": "",
         "content": "",
@@ -664,7 +760,7 @@ async def _process_full_chat(user_message: str, context: list) -> dict:
     }
 
     try:
-        # 1. Notion 검색 (예약어 기반)
+        # 1. Notion search (keyword-based)
         notion_pages = []
         if notion_service and any(
             kw in user_message.lower()
@@ -683,14 +779,14 @@ async def _process_full_chat(user_message: str, context: list) -> dict:
             except Exception as e:
                 logger.error(f"❌ Notion search failed: {e}", exc_info=True)
 
-        # 2. Cosmos DB 벡터 검색
+        # 2. Cosmos DB vector search
         document_chunks = []
         if cosmos_service:
             try:
                 await cosmos_service.initialize_database()
                 result_data["azure_services_used"]["cosmos_db"] = True
 
-                # embedding 생성
+                # Generate embedding
                 embedding = await openai_service.generate_embeddings(user_message)
                 if embedding:
                     result_data["azure_services_used"]["openai_embedding"] = True
@@ -727,7 +823,7 @@ async def _process_full_chat(user_message: str, context: list) -> dict:
         logger.info(f"🔍 Sending to AI - Document chunks: {len(document_chunks)}")
         logger.info(f"🔍 User message: {user_message}")
 
-        # 4. OpenAI 최종 응답 생성
+        # 4. OpenAI final response generation
         ai_response = await openai_service.generate_response(
             user_message=user_message,
             context=context,
@@ -742,10 +838,10 @@ async def _process_full_chat(user_message: str, context: list) -> dict:
         else:
             response_text = str(ai_response)
 
-        # 5. 응답이 너무 짧으면 Notion 데이터로 보강
+        # 5. Enhance response if too short with Notion data
         if len(response_text) < 100 and notion_pages:
             logger.warning(f"⚠️ AI response too short ({len(response_text)} chars), enhancing with Notion data")
-            enhanced_response = response_text + "\n\n📝 **Notion에서 찾은 정보:**\n"
+            enhanced_response = response_text + "\n\n📝 **Information found in Notion:**\n"
             for i, page in enumerate(notion_pages[:3]):
                 title = page.get('title', 'Untitled')
                 content_preview = page.get('content_preview', page.get('content', ''))[:200]
@@ -761,7 +857,7 @@ async def _process_full_chat(user_message: str, context: list) -> dict:
             logger.info(f"✅ Enhanced response with Notion data: {len(response_text)} characters")
 
         if not response_text.strip():
-            response_text = "죄송합니다. 응답을 생성하는 데 문제가 발생했습니다. 다시 시도해주세요."
+            response_text = "I apologize, but I encountered an issue generating a response. Please try again."
 
         result_data["assistant_message"] = response_text
         result_data["content"] = response_text
@@ -777,108 +873,68 @@ async def _process_full_chat(user_message: str, context: list) -> dict:
 
     return result_data
 
-async def _search_notion(query: str) -> list:
-    """Enhanced Notion search with content reading capabilities."""
+def _search_notion_sync(query: str) -> list:
+    """Synchronous Notion search to avoid async issues."""
     if not notion_service:
         return []
 
     try:
-        # Check if this is a meeting-related query
-        meeting_keywords = ['meeting', 'meetings', '회의', '미팅', 'calendar', 'schedule']
-        is_meeting_query = any(keyword in query.lower() for keyword in meeting_keywords)
+        logger.info(f"🔍 Synchronous Notion search for: {query}")
         
-        if is_meeting_query:
-            logger.info(f"🗓️ Detected meeting-related query: {query}")
-            
-            # Check for month-specific queries
-            month_match = re.search(r'(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)', query.lower())
-            
-            if month_match:
-                month = month_match.group(1)
-                logger.info(f"🗓️ Detected month-specific query: {month}")
-                
-                try:
-                    meetings = notion_service.get_meetings_for_month(month)
-                    
-                    detailed_pages = []
-                    for meeting in meetings:
-                        page_data = {
-                            "id": f"meeting_{len(detailed_pages)}",
-                            "title": meeting.get('title', 'Untitled Meeting'),
-                            "url": meeting.get('page_url', ''),
-                            "last_edited_time": '',
-                            "created_time": '',
-                            "content": f"""Meeting: {meeting.get('title', 'No title')}
-{meeting.get('datetime', 'No date/time specified')}
-{meeting.get('location', '')}
-{meeting.get('participants', '')}
-Source: {meeting.get('source_page', 'Unknown')}""",
-                            "content_preview": f"Meeting: {meeting.get('title', 'No title')} - {meeting.get('datetime', 'No date/time specified')}",
-                            "meeting_info": meeting
-                        }
-                        detailed_pages.append(page_data)
-                    
-                    logger.info(f"✅ Found {len(meetings)} meetings for {month}")
-                    return detailed_pages
-                    
-                except Exception as e:
-                    logger.error(f"❌ Month-specific meeting search failed: {e}")
+        # Use basic search first
+        if hasattr(notion_service, 'search_pages'):
+            pages = notion_service.search_pages(query)
+        else:
+            return []
         
-        # For non-month-specific queries or fallback, use enhanced search
-        try:
-            # Use enhanced search if available
-            if hasattr(notion_service, 'search_pages_and_content'):
-                pages = notion_service.search_pages_and_content(query, limit=10)
-            elif hasattr(notion_service, 'search_meeting_pages'):
-                pages = notion_service.search_meeting_pages(query)
-            else:
-                pages = notion_service.search_pages(query)
-                
-                # Enhance with content if basic search
-                enhanced_pages = []
-                for page in pages:
-                    try:
-                        page_id = page.get('id', '')
-                        if page_id and hasattr(notion_service, 'get_page_content'):
-                            content = notion_service.get_page_content(page_id)
-                            page['content'] = content
-                            page['content_preview'] = content[:500] + "..." if len(content) > 500 else content
-                        enhanced_pages.append(page)
-                    except Exception as e:
-                        logger.error(f"❌ Error getting content for page {page.get('id', 'unknown')}: {e}")
-                        enhanced_pages.append(page)
-                
-                pages = enhanced_pages
-
-        except Exception as e:
-            logger.error(f"❌ Enhanced search failed, falling back to basic search: {e}")
-            pages = notion_service.search_pages(query) if hasattr(notion_service, 'search_pages') else []
-
+        # Enhance with content
         detailed_pages = []
-        for p in pages:
-            if isinstance(p, dict):
+        for page in pages:
+            try:
                 # Extract proper title
-                title = p.get("title", "Untitled")
+                title = page.get("title", "Untitled")
                 if title == "Untitled" or not title:
-                    title = notion_service._extract_page_title(p) if hasattr(notion_service, '_extract_page_title') else "Untitled"
+                    if hasattr(notion_service, '_extract_page_title'):
+                        title = notion_service._extract_page_title(page)
+                    else:
+                        title = "Untitled"
+                
+                # Get content if possible
+                content = ""
+                content_preview = ""
+                page_id = page.get('id', '')
+                if page_id and hasattr(notion_service, 'get_page_content'):
+                    try:
+                        content = notion_service.get_page_content(page_id)
+                        content_preview = content[:500] + "..." if len(content) > 500 else content
+                    except Exception as e:
+                        logger.warning(f"Could not get content for page {page_id}: {e}")
                 
                 page_data = {
-                    "id": p.get("id", ""),
+                    "id": page_id,
                     "title": title,
-                    "url": p.get("url", ""),
-                    "last_edited_time": p.get("last_edited_time", ""),
-                    "created_time": p.get("created_time", ""),
-                    "content": p.get("content", "")[:2000] if p.get("content") else "",
-                    "content_preview": p.get("content_preview", "")
+                    "url": page.get("url", ""),
+                    "last_edited_time": page.get("last_edited_time", ""),
+                    "created_time": page.get("created_time", ""),
+                    "content": content[:2000] if content else "",
+                    "content_preview": content_preview
                 }
                 detailed_pages.append(page_data)
+                
+            except Exception as e:
+                logger.error(f"❌ Error processing page: {e}")
+                continue
 
-        logger.info(f"✅ Enhanced Notion search completed: {len(detailed_pages)} pages found")
+        logger.info(f"✅ Synchronous Notion search completed: {len(detailed_pages)} pages found")
         return detailed_pages
 
     except Exception as e:
-        logger.error(f"❌ Notion search error: {e}", exc_info=True)
+        logger.error(f"❌ Synchronous Notion search error: {e}")
         return []
+
+async def _search_notion(query: str) -> list:
+    """Enhanced Notion search - wrapper for sync function."""
+    return _search_notion_sync(query)
 
 async def _fix_embeddings_async():
     """Fix missing embeddings for all documents in Cosmos DB asynchronously."""
@@ -886,7 +942,7 @@ async def _fix_embeddings_async():
         "total_documents": 0,
         "fixed_count": 0,
         "error_count": 0,
-        "status": "완료"
+        "status": "completed"
     }
 
     try:
@@ -905,8 +961,8 @@ async def _fix_embeddings_async():
         return base_result
 
     except Exception as e:
-        logger.error(f"❌ _fix_embeddings_async 전체 오류: {e}", exc_info=True)
-        base_result["status"] = "오류 발생"
+        logger.error(f"❌ _fix_embeddings_async error: {e}", exc_info=True)
+        base_result["status"] = "error"
         base_result["error"] = str(e)
 
     return base_result
