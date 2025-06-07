@@ -31,6 +31,14 @@ In today’s digital world, we’re overwhelmed by information—documents, blog
 
 ---
 
+## 📺 Demo Video
+
+[![Watch the demo](https://img.youtube.com/vi/NqOpKgq7Iak/0.jpg)](https://youtu.be/NqOpKgq7Iak)
+
+
+
+---
+
 ## 🎮 How to Use
 
 1. Clone the repository and set up your environment.
@@ -56,12 +64,12 @@ In today’s digital world, we’re overwhelmed by information—documents, blog
 
 > **Rahul**, a product manager, uploads meeting notes, blog links, and internal documentation.  
 > An urgent meeting is scheduled in an hour. The person originally in charge is on sick leave, and Rahul must take over the presentation.  
-> He needs to quickly prepare and understand the key concepts from his own documents.  
+> He needs to quickly prepare and understand the key concepts from his own documents.  <div> 
 > He asks:  
 > “What were the key decisions from last month’s planning meetings?”  
 > “Summarise the 2024 business plan.”  
 > “Add the summary to the Notion page.”  
->  
+>  </div>
 > Gomm AI provides a smart, context aware summary saving time and boosting clarity.
 
 
