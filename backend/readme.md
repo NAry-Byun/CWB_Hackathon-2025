@@ -37,9 +37,6 @@
 * `cosmos_service.py`: Manages communication with Azure Cosmos DB
 * `openai_service.py`: Handles interaction with Azure OpenAI
 
-**Deployment:**
-
-* `deploy.zip`: Azure Function trigger package for serverless deployment
 
 ---
 
