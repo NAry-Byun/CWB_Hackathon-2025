@@ -6,13 +6,13 @@
 
 ## 🔧 Problem Statement
 
-In today’s digital world, we’re overwhelmed by information—documents, blogs, meeting notes, and articles pile up without structure. Finding insights, making decisions, or recalling details becomes increasingly difficult, especially without a standardized process.
+In today’s digital world, we’re overwhelmed by information documents, blogs, meeting notes, and articles pile up without structure. Finding insights, making decisions, or recalling details becomes increasingly difficult, especially without a standardized process.
 
 ---
 
 ## 💡 What is Gomm AI?
 
-**Gomm AI** is a GenAI-powered personal assistant designed to help users manage, organize, and interact with large volumes of content—whether personal or team-based. Whether you're a student, researcher, or professional, Gomm AI simplifies learning, enhances productivity, and supports smarter decision-making.
+**Gomm AI** is a GenAI powered personal assistant designed to help users manage, organize, and interact with large volumes of content—whether personal or team based. Whether you're a student, researcher, or professional, Gomm AI simplifies learning, enhances productivity, and supports smarter decision making.
 
 ---
 
@@ -29,7 +29,7 @@ In today’s digital world, we’re overwhelmed by information—documents, blog
 - **AI/ML**: Azure OpenAI, OpenAI API
 - **Cloud Services**: Azure Functions, Azure Cosmos DB, Azure Blob Storage
 - **Automation & Tools**: Azure Function Triggers, Notion API
-
+- For more details, see the Backend and Frontend setup instructions link below. 
 ---
 
 ## 📺 Demo Video
