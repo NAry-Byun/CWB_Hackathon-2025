@@ -16,6 +16,22 @@ In today’s digital world, we’re overwhelmed by information—documents, blog
 
 ---
 
+---
+
+## 📘 Example Use Case
+
+> **Rahul**, a product manager, uploads meeting notes, blog links, and internal documentation.  
+> An urgent meeting is scheduled in an hour. The person originally in charge is on sick leave, and Rahul must take over the presentation.  
+> He needs to quickly prepare and understand the key concepts from his own documents.  
+>
+> He asks:  
+> “What were the key decisions from last month’s planning meetings?”  
+> “Summarize the 2024 business plan.”  
+> “Add the summary to the Notion page.”  
+>  
+> Gomm AI provides a smart, context-aware summary, saving time and boosting clarity.
+
+
 ## 🏗️ Solution Architecture
 
 <img src="https://github.com/NAry-Byun/CWB_Hackathon-2025/blob/main/frontend/src/imag/AI%20Personal%20Assistant%20App.gif?raw=true" alt="Architecture Diagram" width="900"/>
@@ -75,20 +91,6 @@ For more details, see the Backend and Frontend setup instructions linked below.
 - ✅ Flashcards, quizzes, and summaries for enhanced learning  
 - ✅ Vector search for intelligent content retrieval
 
----
-
-## 📘 Example Use Case
-
-> **Rahul**, a product manager, uploads meeting notes, blog links, and internal documentation.  
-> An urgent meeting is scheduled in an hour. The person originally in charge is on sick leave, and Rahul must take over the presentation.  
-> He needs to quickly prepare and understand the key concepts from his own documents.  
->
-> He asks:  
-> “What were the key decisions from last month’s planning meetings?”  
-> “Summarize the 2024 business plan.”  
-> “Add the summary to the Notion page.”  
->  
-> Gomm AI provides a smart, context-aware summary, saving time and boosting clarity.
 
 ---
 
