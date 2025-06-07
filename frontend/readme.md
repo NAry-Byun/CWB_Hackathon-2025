@@ -1,7 +1,7 @@
 
 # 🌐 Gomm AI — Frontend UI
 
-This folder contains the basic web frontend for the **Gomm AI** GenAI-powered personal assistant. It allows users to interact with AI through a browser-based chatbot interface that supports both text and speech input.
+This folder contains the basic web frontend for the **Gomm AI** GenAI-powered personal assistant. It allows users to interact with AI through a browser based chatbot interface that supports both text and speech input.
 
 The frontend is lightweight and customizable, built using standard HTML, CSS, and JavaScript. This `README` outlines how to set it up and modify key configurations.
 
@@ -14,20 +14,15 @@ The frontend is lightweight and customizable, built using standard HTML, CSS, an
 
 ---
 ## 🚀 How to Run
-
-Make sure your backend server (Flask or Azure Function) is running before launching the frontend.
+Open your Visual studio terminal
+Make sure your backend server (Flask) is running before launching the frontend.
 
 To run the frontend:
-
 1. Open your terminal in the `frontend` directory.
 2. Run:
    ```bash
    npm install
    npm start
-
-
-
-
 ---
 
 ## 🔧 Configuration (Optional)
@@ -67,8 +62,8 @@ const API_BASE = "http://localhost:5000/api";
 
 ## 🧪 Troubleshooting
 
-* **CORS errors**: Ensure CORS is enabled on your backend (Flask/Azure).
-* **Voice input not working**: Check browser compatibility (Chrome recommended).
+* **CORS errors**: Ensure CORS is enabled on your backend.
+* **Voice input not working**: Check browser compatibility.
 * **Slow responses**: If OpenAI processing is slow, consider chunking large documents.
 
 
