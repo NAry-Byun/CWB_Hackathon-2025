@@ -4,7 +4,6 @@
 
 ### 📁 Folder Structure
 
-![Backend Folder Structure](https://github.com/NAry-Byun/CWB_Hackathon-2025/blob/main/frontend/src/imag/backend%20structure.png?raw=true)
 
 ---
 
