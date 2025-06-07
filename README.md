@@ -6,13 +6,13 @@
 
 ## 🔧 Problem Statement
 
-In today’s digital world, we’re overwhelmed by information—documents, blogs, meeting notes, and articles pile up without structure. Finding insights, making decisions, or recalling details becomes increasingly difficult, especially without a standardized process.
+In today’s digital world, we’re overwhelmed by information documents, blogs, meeting notes, and articles pile up without structure. Finding insights, making decisions, or recalling details becomes increasingly difficult, especially without a standardised process.
 
 ---
 
 ## 💡 What is Gomm AI?
 
-**Gomm AI** is a GenAI-powered personal assistant designed to help users manage, organize, and interact with large volumes of content—whether personal or team-based. Whether you're a student, researcher, or professional, Gomm AI simplifies learning, enhances productivity, and supports smarter decision-making.
+**Gomm AI** is a GenAI powered personal assistant designed to help users manage, organise, and interact with large volumes of content whether personal or team based. Whether you're a student, researcher, or professional, Gomm AI simplifies learning, enhances productivity, and supports smarter decision making.
 
 
 
@@ -37,37 +37,27 @@ In today’s digital world, we’re overwhelmed by information—documents, blog
 <img src="https://github.com/NAry-Byun/CWB_Hackathon-2025/blob/main/frontend/src/imag/AI%20Personal%20Assistant%20App.gif?raw=true" alt="Architecture Diagram" width="900"/>
 
 This workflow illustrates how an AI personal assistant processes raw data and enables users to interact with it through a chatbot.
-Users begin by uploading various types of content such as meeting documents, business plans (PDFs), or text gathered from web scraping. These files are stored in **Azure Blob Storage**.
+Users begin by uploading various types of content such as meeting documents, business plans, or text gathered from web scraping. These files are stored in **Azure Blob Storage**.
 Once a file is uploaded, an **Azure Function Trigger** is automatically activated. This serverless function processes the file, extracts its contents, and saves the structured data into **Azure Cosmos DB**.
-The stored data is then utilized by the AI assistant. 
+The stored data is then utilised by the AI assistant. 
 
 At the same time, **Azure AI Search** indexes the content, allowing relevant information to be retrieved quickly when the user asks a question.
 Using **OpenAI models**, the assistant analyzes the stored content, understands user queries, and generates meaningful, context aware responses. The system also stores chat history in Cosmos DB to maintain continuity in conversations.
-If **Notion** is integrated, the assistant can fetch content directly from Notion pages or update them with AI-generated summaries and insights using the Python `notion-client` library.
+If **Notion** is integrated, the assistant can fetch content directly from Notion pages or update them with AI generated summaries and insights using the Python `notion-client` library.
 Users interact with the chatbot through text or voice input. The chatbot forwards the message to OpenAI, fetches relevant information from indexed documents or Cosmos DB, and provides a response.
-Overall, this serverless and automated system streamlines the entire workflow, minimizing manual effort while enabling intelligent, real time interaction with personalized content.
+Overall, this serverless and automated system streamlines the entire workflow, minimising manual effort while enabling intelligent, real time interaction with personalised content.
 
 ---
 
 ## 🛠️ Tech Stack
 
-- **Backend**: Flask (Python)  
-- **Frontend**: JavaScript  
+- **Backend**: Python, Flask 
+- **Frontend**: HTML, CSS, JavaScript  
 - **AI/ML**: Azure OpenAI, Azure AI Search  
 - **Cloud Services**: Azure Functions, Azure Cosmos DB, Azure Blob Storage  
 - **Automation & Tools**: Azure Function Triggers, Notion API  
 
 For more details, see the Backend and Frontend setup instructions linked below.
-
----
-
-## 📺 Demo Video
-
-<a href="https://youtu.be/NqOpKgq7Iak" target="_blank">
-  <img src="https://img.youtube.com/vi/NqOpKgq7Iak/0.jpg" width="800" alt="Watch the demo video"/>
-</a>
-
-**👉 Click the image to watch the demo.**
 
 ---
 
@@ -82,6 +72,17 @@ For more details, see the Backend and Frontend setup instructions linked below.
 5. Explore automation features for smarter workflows.
 
 ---
+
+## 📺 Demo Video
+
+<a href="https://youtu.be/NqOpKgq7Iak" target="_blank">
+  <img src="https://img.youtube.com/vi/NqOpKgq7Iak/0.jpg" width="800" alt="Watch the demo video"/>
+</a>
+
+**👉 Click the image to watch the demo.**
+
+---
+
 
 ## ✨ Features
 
