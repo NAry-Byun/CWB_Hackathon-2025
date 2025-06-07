@@ -12,7 +12,7 @@ In today’s digital world, we’re overwhelmed by information documents, blogs,
 
 ## 💡 What is Gomm AI?
 
-**Gomm AI** is a GenAI powered personal assistant designed to help users manage, organize, and interact with large volumes of content—whether personal or team based. Whether you're a student, researcher, or professional, Gomm AI simplifies learning, enhances productivity, and supports smarter decision making.
+**Gomm AI** is a GenAI powered personal assistant designed to help users manage, organize, and interact with large volumes of content whether personal or team based. Whether you're a student, researcher, or professional, Gomm AI simplifies learning, enhances productivity, and supports smarter decision making.
 
 ---
 
@@ -24,11 +24,11 @@ In today’s digital world, we’re overwhelmed by information documents, blogs,
 
 ## 🛠️ Tech Stack
 
-- **Backend**: Flask (Python)
-- **Frontend**:Javascript
-- **AI/ML**: Azure OpenAI, OpenAI API
-- **Cloud Services**: Azure Functions, Azure Cosmos DB, Azure Blob Storage
-- **Automation & Tools**: Azure Function Triggers, Notion API
+- **Backend**: Flask (Python)  
+- **Frontend**: JavaScript  
+- **AI/ML**: Azure OpenAI, Azure AI Search  
+- **Cloud Services**: Azure Functions, Azure Cosmos DB, Azure Blob Storage  
+- **Automation & Tools**: Azure Function Triggers, Notion API  
 - For more details, see the Backend and Frontend setup instructions link below. 
 ---
 
