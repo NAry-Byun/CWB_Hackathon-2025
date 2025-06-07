@@ -34,7 +34,7 @@ In today’s digital world, we’re overwhelmed by information documents, blogs,
 ---
 ## 🏗️ Solution Architecture
 
-<img src="https://raw.githubusercontent.com/NAry-Byun/CWB_Hackathon-2025/3e3deeca2ec2ba2da0feb94e025ad8668acab20c/frontend/src/imag/AI%20Personal%20Assistant%20App.gif" alt="Architecture Diagram" width="900"/>
+<img src="https://raw.githubusercontent.com/NAry-Byun/CWB_Hackathon-2025/81246d16589ed77eee4a186fa4798a781e0eb0ba/frontend/src/imag/AI%20Personal%20Assistant%20App.gif" alt="Architecture Diagram" width="900"/>
 
 This workflow illustrates how an AI personal assistant processes raw data and enables users to interact with it through a chatbot.
 Users begin by uploading various types of content such as meeting documents, business plans, or text gathered from web scraping. These files are stored in **Azure Blob Storage**.
