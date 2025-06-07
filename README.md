@@ -25,6 +25,7 @@ In today’s digital world, we’re overwhelmed by information—documents, blog
 ## 🛠️ Tech Stack
 
 - **Backend**: Flask (Python)
+- **Frontend**:Javascript
 - **AI/ML**: Azure OpenAI, OpenAI API
 - **Cloud Services**: Azure Functions, Azure Cosmos DB, Azure Blob Storage
 - **Automation & Tools**: Azure Function Triggers, Notion API
