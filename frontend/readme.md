@@ -9,7 +9,8 @@ The frontend is lightweight and customizable, built using standard HTML, CSS, an
 
 ### 📁 Folder Structure
 
-![frontend Folder Structure]([https://github.com/NAry-Byun/CWB_Hackathon-2025/blob/main/frontend/src/imag/frontend_structure.png?raw=true)
+<img src="https://github.com/NAry-Byun/CWB_Hackathon-2025/blob/main/frontend/src/imag/frontend_structure.png?raw=true" alt="Folder Structure" width="500"/>
+
 
 ---
 ## 🚀 How to Run
