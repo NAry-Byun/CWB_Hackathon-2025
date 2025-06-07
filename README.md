@@ -14,7 +14,7 @@ In today’s digital world, we’re overwhelmed by information—documents, blog
 
 **Gomm AI** is a GenAI-powered personal assistant designed to help users manage, organize, and interact with large volumes of content—whether personal or team-based. Whether you're a student, researcher, or professional, Gomm AI simplifies learning, enhances productivity, and supports smarter decision-making.
 
----
+
 
 ---
 
@@ -31,7 +31,7 @@ In today’s digital world, we’re overwhelmed by information—documents, blog
 >  
 > Gomm AI provides a smart, context-aware summary, saving time and boosting clarity.
 
-
+---
 ## 🏗️ Solution Architecture
 
 <img src="https://github.com/NAry-Byun/CWB_Hackathon-2025/blob/main/frontend/src/imag/AI%20Personal%20Assistant%20App.gif?raw=true" alt="Architecture Diagram" width="900"/>
