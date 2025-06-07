@@ -36,7 +36,7 @@ const API_BASE = "http://localhost:5000/api";
 
 ---
 
-## 🎨 Customization Options
+## 🎨 Customisation Options
 
 * **Chat UI**: Edit `index.html` and `style.css` to change the chatbot interface appearance.
 * **Speech-to-Text**: Make sure your browser supports the Web Speech API for voice input.
