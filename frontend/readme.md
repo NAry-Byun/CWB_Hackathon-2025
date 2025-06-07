@@ -71,14 +71,4 @@ const API_BASE = "http://localhost:5000/api";
 * **Voice input not working**: Check browser compatibility (Chrome recommended).
 * **Slow responses**: If OpenAI processing is slow, consider chunking large documents.
 
----
 
-## ✨ Credits
-
-Built by Nary Byun for **CWB Hackathon 2025**
-Inspired by real-world needs for intelligent, document-aware AI tools.
-
-```
-
-Let me know if you want this saved as a `.md` file or pushed directly into your GitHub repo.
-```
