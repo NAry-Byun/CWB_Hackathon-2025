@@ -33,8 +33,11 @@ In today’s digital world, we’re overwhelmed by information—documents, blog
 
 ## 📺 Demo Video
 
-[![Watch the demo](https://img.youtube.com/vi/NqOpKgq7Iak/0.jpg)](https://youtu.be/NqOpKgq7Iak)
+<a href="https://youtu.be/NqOpKgq7Iak" target="_blank">
+  <img src="https://img.youtube.com/vi/NqOpKgq7Iak/0.jpg" width="800" alt="Watch the demo video"/>
+</a>
 
+==>>>Click the image to watch the demo.
 
 
 ---
