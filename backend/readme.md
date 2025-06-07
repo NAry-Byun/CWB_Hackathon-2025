@@ -65,5 +65,7 @@ While working with the Notion API, I encountered several debugging challenges an
 
 * [Notion MCP Server (GitHub)](https://github.com/makenotion/notion-mcp-server)
 * [notion-client (PyPI)](https://pypi.org/project/notion-client/)
+* [Notion API Overview](https://developers.notion.com/docs/getting-started)
+* [Azure Functions triggers and bindings concepts](https://learn.microsoft.com/en-us/azure/azure-functions/functions-triggers-bindings?tabs=isolated-process%2Cnode-v4%2Cpython-v2&pivots=programming-language-csharp)
 
 
