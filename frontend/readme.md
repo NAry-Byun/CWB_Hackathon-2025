@@ -26,7 +26,7 @@ To run the frontend:
    npm start
 
 
-3. Alternatively, right-click `index.html` and select **"Open with Live Server"** if using VS Code with Live Server extension.
+
 
 ---
 
