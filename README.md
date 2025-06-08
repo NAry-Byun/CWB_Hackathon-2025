@@ -75,11 +75,12 @@ For more details, see the Backend and Frontend setup instructions linked below.
 
 ## 📺 Demo Video
 
-<a href="https://youtu.be/NqOpKgq7Iak" target="_blank">
-  <img src="https://img.youtube.com/vi/NqOpKgq7Iak/0.jpg" width="800" alt="Watch the demo video"/>
+<a href="https://youtu.be/Hek8t7jpFCI" target="_blank">
+  <img src="https://img.youtube.com/vi/Hek8t7jpFCI/0.jpg" width="800" alt="Watch the demo video"/>
 </a>
 
 **👉 Click the image to watch the demo.**
+
 
 ---
 
