@@ -1,6 +1,6 @@
 # 🧠 Gomm AI — GenAI-Based Personal Assistant
 
-![App Preview](https://github.com/NAry-Byun/CWB_Hackathon-2025/blob/main/frontend/src/imag/Screenshot%202025-06-06%20193929.png?raw=true)
+![App Preview](https://github.com/NAry-Byun/CWB_Hackathon-2025/blob/main/frontend/src/imag/front.png?raw=true)
 
 ---
 
@@ -34,7 +34,7 @@ In today’s digital world, we’re overwhelmed by information documents, blogs,
 ---
 ## 🏗️ Solution Architecture
 
-<img src="https://raw.githubusercontent.com/NAry-Byun/CWB_Hackathon-2025/af06ee2e595bb0bee69a9377d99d3d44b0cfabde/frontend/src/imag/sa.gif" alt="Architecture Diagram" width="900"/>
+<img src="https://github.com/NAry-Byun/CWB_Hackathon-2025/blob/main/frontend/src/imag/sa_.gif?raw=true" alt="Architecture Diagram" width="900"/>
 
 This workflow illustrates how an AI personal assistant processes raw data and enables users to interact with it through a chatbot.
 Users begin by uploading various types of content such as meeting documents, business plans, or text gathered from web scraping. These files are stored in **Azure Blob Storage**.
