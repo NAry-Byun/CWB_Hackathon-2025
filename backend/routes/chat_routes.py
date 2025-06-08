@@ -150,10 +150,46 @@ def _error_response(error_message: str, status_code: int = 400) -> tuple:
     }
     return jsonify(response), status_code
 
+# ─── FIXED: Page Title Normalization ─────────────────────────────────────────
+
+def _normalize_page_title(title_raw: str) -> str:
+    """Normalize and match page titles to handle variations"""
+    # Remove common prefixes
+    title = title_raw.replace('my ', '').replace('the ', '').strip()
+    
+    # Common page title patterns and their normalized forms
+    title_mappings = {
+        'meeting calendar july 2025': 'Meeting Calendar (July 2025)',
+        'meeting calendar (july 2025)': 'Meeting Calendar (July 2025)',
+        'meeting calendar': 'Meeting Calendar (July 2025)',  # Default to current month
+        'calendar july 2025': 'Meeting Calendar (July 2025)',
+        'july 2025 calendar': 'Meeting Calendar (July 2025)',
+        'july calendar': 'Meeting Calendar (July 2025)',
+        'meeting calendar july': 'Meeting Calendar (July 2025)'
+    }
+    
+    # Check direct mappings first
+    title_lower = title.lower()
+    if title_lower in title_mappings:
+        return title_mappings[title_lower]
+    
+    # Try to construct proper format for meeting calendar patterns
+    if 'meeting' in title_lower and 'calendar' in title_lower:
+        if 'july' in title_lower or '2025' in title_lower:
+            return 'Meeting Calendar (July 2025)'
+        else:
+            return 'Meeting Calendar (July 2025)'  # Default
+    
+    # For other titles, try to maintain proper capitalization
+    if '(' in title and ')' in title:
+        return title.title()
+    
+    return title
+
 # ─── Enhanced Notion Integration Functions ────────────────────────────────────
 
 def detect_notion_write_request(user_message: str) -> Dict[str, Any]:
-    """Detect if user wants to write to Notion and extract details (AUTO-WRITE)"""
+    """Detect if user wants to write to Notion and extract details (AUTO-WRITE) - FIXED"""
     
     write_patterns = [
         r"write.*?(?:to|in|on)\s+(?:notion|page)",
@@ -170,28 +206,34 @@ def detect_notion_write_request(user_message: str) -> Dict[str, Any]:
     if not is_write_request:
         return {"is_write_request": False}
     
-    # Extract page title with enhanced patterns
+    # Enhanced page title extraction patterns
     page_patterns = [
-        r"(?:Meeting\s+Calendar\s*\([^)]+\))",      # Meeting Calendar (July 2025)
-        r"([A-Z][A-Za-z\s]+\s*\([^)]+\))",         # Any Title (Something)
-        r"page\s+['\"]([^'\"]+)['\"]",              # page "Title"
-        r"notion\s+['\"]([^'\"]+)['\"]",            # notion "Title"
-        r"(?:to|in|on)\s+([A-Z][A-Za-z\s]{5,30})",  # Generic title after "to/in/on"
-        r"(?:to|in|on)\s+(?:my\s+)?([A-Za-z\s]{5,30})\s+(?:notion\s+)?page" # "to my calendar page"
+        r"(?:Meeting\s+Calendar\s*\([^)]+\))",              # Meeting Calendar (July 2025)
+        r"(?:meeting\s+calendar\s+july\s+2025)",            # meeting calendar july 2025
+        r"(?:meeting\s+calendar\s+\([^)]+\))",             # meeting calendar (july 2025)
+        r"([A-Z][A-Za-z\s]+\s*\([^)]+\))",                 # Any Title (Something)
+        r"page\s+['\"]([^'\"]+)['\"]",                      # page "Title"
+        r"notion\s+['\"]([^'\"]+)['\"]",                    # notion "Title"
+        r"(?:to|in|on)\s+(?:my\s+)?([A-Za-z\s]{5,50})\s+(?:notion\s+)?page"  # to my calendar page
     ]
     
     target_page = None
     for pattern in page_patterns:
         match = re.search(pattern, user_message, re.IGNORECASE)
         if match:
+            # Handle different group scenarios
             if match.groups():
-                target_page = match.group(1).strip()
+                if len(match.groups()) >= 1 and match.group(1):
+                    target_page = match.group(1).strip()
+                else:
+                    target_page = match.group(0).strip()
             else:
                 target_page = match.group(0).strip()
             
-            # Clean up common prefixes
-            target_page = target_page.replace('my ', '').replace('the ', '').strip()
-            break
+            if target_page:
+                # Normalize the extracted title
+                target_page = _normalize_page_title(target_page)
+                break
     
     return {
         "is_write_request": True,
@@ -201,7 +243,7 @@ def detect_notion_write_request(user_message: str) -> Dict[str, Any]:
     }
 
 def _parse_notion_edit_request(user_message: str) -> dict:
-    """Parse user message to detect direct Notion edit requests (DIRECT EDIT)."""
+    """Parse user message to detect direct Notion edit requests (DIRECT EDIT) - FIXED"""
     patterns = [
         r'add\s+(?:text\s+)?["\'](.+?)["\'] to (?:my\s+)?(.+?)\s+notion\s+page',
         r'add\s+["\'](.+?)["\'] to (?:my\s+)?(.+?)\s+page',
@@ -217,9 +259,10 @@ def _parse_notion_edit_request(user_message: str) -> dict:
         match = re.search(pattern, user_lower, re.IGNORECASE)
         if match:
             content = match.group(1).strip()
-            page_title = match.group(2).strip()
+            page_title_raw = match.group(2).strip()
             
-            page_title = page_title.replace('my ', '').replace('the ', '')
+            # Clean up page title and try to match known patterns
+            page_title = _normalize_page_title(page_title_raw)
             
             formatting = 'paragraph'
             if content.startswith('#'):
@@ -263,27 +306,28 @@ def handle_notion_write_request_sync(user_message: str, ai_response: str, notion
         
         logger.info(f"🤖 Auto-writing AI response to Notion page: '{target_page}'")
         
-        # Use available method - all synchronous
-        if hasattr(notion_service, 'add_text_by_page_title'):
-            result = notion_service.add_text_by_page_title(
-                page_title=target_page,
-                text=f"**User Question:** {user_message}\n\n**AI Response:**\n{ai_response}",
-                formatting='paragraph'
-            )
+        # Try enhanced async method first
+        if hasattr(notion_service, 'write_chatbot_response_to_page'):
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                result = loop.run_until_complete(
+                    notion_service.write_chatbot_response_to_page(target_page, ai_response, user_message)
+                )
+            finally:
+                loop.close()
         else:
             # Fallback to basic method
             page = notion_service.get_page_by_title(target_page)
             if page:
                 page_id = page['id']
-                success = notion_service.add_text_to_page(
-                    page_id, 
-                    f"**User Question:** {user_message}\n\n**AI Response:**\n{ai_response}", 
-                    'paragraph'
-                )
+                content = f"**User Question:** {user_message}\n\n**AI Response:**\n{ai_response}"
+                success = notion_service.add_text_to_page(page_id, content, 'paragraph')
                 result = {
                     "success": success,
                     "page_title": target_page,
-                    "page_id": page_id
+                    "page_id": page_id,
+                    "page_url": page.get('url', '')
                 }
             else:
                 result = {
@@ -304,29 +348,56 @@ async def handle_notion_write_request(user_message: str, ai_response: str, notio
     """Handle automatic writing of AI response to Notion - async wrapper"""
     return handle_notion_write_request_sync(user_message, ai_response, notion_request)
 
+# ─── FIXED: Notion Search Function ───────────────────────────────────────────
+
 async def _search_notion(user_message: str) -> List[Dict[str, Any]]:
-    """Search Notion pages based on user message"""
+    """Search Notion pages based on user message - FIXED nested event loop"""
     try:
         if not notion_service:
             return []
         
-        # Extract keywords for search
+        # Enhanced keyword extraction
         keywords = user_message.lower().split()
-        relevant_keywords = [kw for kw in keywords if len(kw) > 3 and kw not in ['what', 'when', 'where', 'how', 'why', 'the', 'and', 'or']]
+        relevant_keywords = [kw for kw in keywords if len(kw) > 2 and kw not in [
+            'what', 'when', 'where', 'how', 'why', 'the', 'and', 'or', 'do', 'have', 'my', 'in'
+        ]]
+        
+        # Add specific search terms for known patterns
+        search_terms = []
+        if any(term in user_message.lower() for term in ['july', '2025', 'meeting', 'calendar']):
+            search_terms.extend(['meeting', 'calendar', 'july', '2025'])
+        
+        # Combine relevant keywords with specific terms
+        all_search_terms = list(set(relevant_keywords + search_terms))
+        search_query = ' '.join(all_search_terms[:5])  # Use top 5 terms
+        
+        logger.info(f"🔍 Searching Notion with enhanced query: '{search_query}'")
         
         # Search for pages with enhanced method if available
         if hasattr(notion_service, 'search_pages_and_content'):
-            pages = notion_service.search_pages_and_content(' '.join(relevant_keywords[:3]))
+            # FIX: Since we're already in an async context, just await directly
+            # NO event loop creation needed - we're already inside one
+            pages = await notion_service.search_pages_and_content(search_query, limit=10)
+            logger.info(f"✅ Enhanced Notion search found {len(pages)} results")
         else:
-            # Fallback to basic page listing
-            pages = notion_service.get_all_pages()
-            # Filter pages based on title matching
-            filtered_pages = []
-            for page in pages:
-                title = page.get('title', '').lower()
-                if any(keyword in title for keyword in relevant_keywords):
-                    filtered_pages.append(page)
-            pages = filtered_pages[:5]  # Limit to 5 pages
+            # Fallback to basic search with multiple queries
+            all_pages = []
+            for term in ['meeting calendar', 'july 2025', search_query]:
+                if term.strip():
+                    pages = notion_service.search_pages(term.strip())
+                    all_pages.extend(pages)
+            
+            # Remove duplicates based on page ID
+            seen_ids = set()
+            unique_pages = []
+            for page in all_pages:
+                page_id = page.get('id')
+                if page_id and page_id not in seen_ids:
+                    seen_ids.add(page_id)
+                    unique_pages.append(page)
+            
+            pages = unique_pages[:10]
+            logger.info(f"✅ Basic Notion search found {len(pages)} results")
         
         return pages[:3]  # Return top 3 matches
         
@@ -487,8 +558,8 @@ Please try again or check your Notion integration settings."""
                 result_data = loop.run_until_complete(_process_enhanced_chat(user_message, context))
                 ai_response = result_data.get("assistant_message", "")
                 
-                # Then write it to Notion automatically
-                notion_result = loop.run_until_complete(handle_notion_write_request(user_message, ai_response, notion_auto_write_check))
+                # Then write it to Notion automatically - use sync version to avoid nested loops
+                notion_result = handle_notion_write_request_sync(user_message, ai_response, notion_auto_write_check)
             finally:
                 loop.close()
             
@@ -723,7 +794,7 @@ async def _process_enhanced_chat(user_message: str, context: list) -> dict:
             except Exception as e:
                 logger.error(f"❌ Cosmos search failed: {e}")
 
-        # 3. Notion Search (if available)
+        # 3. Notion Search (if available) - FIXED
         notion_pages = []
         if notion_service and any(
             kw in user_message.lower()
@@ -853,8 +924,8 @@ def add_text_to_notion():
         return _error_response(f"Notion integration error: {str(e)}", 500)
 
 @chat_bp.route('/notion/search', methods=['POST', 'OPTIONS'])
-def search_notion():
-    """Search Notion pages"""
+def search_notion_endpoint():
+    """Search Notion pages - FIXED VERSION"""
     if request.method == 'OPTIONS':
         return _handle_cors()
 
@@ -866,6 +937,7 @@ def search_notion():
         return _error_response("Field 'query' is required", 400)
 
     try:
+        # Use event loop to handle the async search properly
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:

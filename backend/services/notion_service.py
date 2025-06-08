@@ -1,5 +1,3 @@
-# services/notion_service.py - ENHANCED with Full Content Search & Long Text Writing
-
 import requests
 import json
 import os

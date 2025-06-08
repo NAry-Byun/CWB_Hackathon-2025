@@ -1,0 +1,100 @@
+{
+  "test_user": {
+    "493ef8bc-9ce4-4c2a-ac34-dfd4493500fe": {
+      "flashcard_id": "493ef8bc-9ce4-4c2a-ac34-dfd4493500fe",
+      "review_count": 0,
+      "correct_count": 0,
+      "incorrect_count": 0,
+      "ease_factor": 2.5,
+      "interval": 1,
+      "next_review": "2025-06-08T03:28:52.783547",
+      "last_reviewed": null,
+      "streak": 0,
+      "created_date": "2025-06-08T03:28:52.783552"
+    }
+  },
+  "demo_user_iv80ezaco": {
+    "cb02b3b2-4aeb-4a68-ad4b-b21de418c14b": {
+      "flashcard_id": "cb02b3b2-4aeb-4a68-ad4b-b21de418c14b",
+      "review_count": 1,
+      "correct_count": 1,
+      "incorrect_count": 0,
+      "ease_factor": 2.6,
+      "interval": 1,
+      "next_review": "2025-06-09T03:32:04.270765",
+      "last_reviewed": "2025-06-08T03:32:04.270756",
+      "streak": 1,
+      "created_date": "2025-06-08T03:31:51.874137"
+    }
+  },
+  "demo_user_uujm7c047": {},
+  "demo_user_rf2dvbodo": {},
+  "demo_user_pnrzvwmso": {
+    "64f5635a-d9b3-45dc-ab74-72667b56133d": {
+      "flashcard_id": "64f5635a-d9b3-45dc-ab74-72667b56133d",
+      "review_count": 0,
+      "correct_count": 0,
+      "incorrect_count": 0,
+      "ease_factor": 2.5,
+      "interval": 1,
+      "next_review": "2025-06-08T03:52:05.437124",
+      "last_reviewed": null,
+      "streak": 0,
+      "created_date": "2025-06-08T03:52:05.437132"
+    },
+    "330c267a-c21c-452d-812e-06faa3ca58df": {
+      "flashcard_id": "330c267a-c21c-452d-812e-06faa3ca58df",
+      "review_count": 0,
+      "correct_count": 0,
+      "incorrect_count": 0,
+      "ease_factor": 2.5,
+      "interval": 1,
+      "next_review": "2025-06-08T03:52:30.926667",
+      "last_reviewed": null,
+      "streak": 0,
+      "created_date": "2025-06-08T03:52:30.926675"
+    }
+  },
+  "demo_user_zyyewtjsk": {
+    "6005c80d-97d9-4255-a974-94ed0fe4d77c": {
+      "flashcard_id": "6005c80d-97d9-4255-a974-94ed0fe4d77c",
+      "review_count": 0,
+      "correct_count": 0,
+      "incorrect_count": 0,
+      "ease_factor": 2.5,
+      "interval": 1,
+      "next_review": "2025-06-08T04:00:03.774921",
+      "last_reviewed": null,
+      "streak": 0,
+      "created_date": "2025-06-08T04:00:03.774928"
+    }
+  },
+  "demo_user_1sfvlt9w0": {
+    "2e6739de-6d33-4ca3-b074-70ce8de38c61": {
+      "flashcard_id": "2e6739de-6d33-4ca3-b074-70ce8de38c61",
+      "review_count": 0,
+      "correct_count": 0,
+      "incorrect_count": 0,
+      "ease_factor": 2.5,
+      "interval": 1,
+      "next_review": "2025-06-08T04:09:16.029735",
+      "last_reviewed": null,
+      "streak": 0,
+      "created_date": "2025-06-08T04:09:16.029742"
+    }
+  },
+  "demo_user_bjq02k8hj": {
+    "26e22d59-f820-42e0-8dea-9d6f50483dbf": {
+      "flashcard_id": "26e22d59-f820-42e0-8dea-9d6f50483dbf",
+      "review_count": 1,
+      "correct_count": 1,
+      "incorrect_count": 0,
+      "ease_factor": 2.6,
+      "interval": 1,
+      "next_review": "2025-06-09T04:33:34.430596",
+      "last_reviewed": "2025-06-08T04:33:34.430583",
+      "streak": 1,
+      "created_date": "2025-06-08T04:33:28.488512"
+    }
+  }
+}

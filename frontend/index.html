@@ -3,51 +3,149 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Personal Assistant - Flask Chat with Speech</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>AI Personal Assistant - Enhanced Chat with FlashCards</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="chat-container">
-        <div class="chat-header">
-            <h1>🤖 AI Personal Assistant</h1>
-            <p>Powered by Azure OpenAI, Cosmos DB, Notion & Speech Recognition</p>
-        </div>
+    <div class="app-container">
+        <div class="sidebar">
+            <h1>🤖  GOMM AI Assistant</h1>
+            
+            <button class="nav-button active" data-section="chat">
+                💬 Chat
+            </button>
+            <button class="nav-button" data-section="review">
+                📚 Review Cards
+            </button>
+            <button class="nav-button" data-section="flashcards">
+                🗂️ My FlashCards
+            </button>
+            <button class="nav-button" data-section="stats">
+                📊 Statistics
+            </button>
 
-        <div id="chatMessages" class="chat-messages">
-            <!-- Messages will be inserted here -->
-        </div>
-
-        <div id="typingIndicator" class="typing-indicator">
-            <div class="message-avatar">🤖</div>
-            <div class="typing-dots">
-                <div></div>
-                <div></div>
-                <div></div>
+            <div class="stats-box">
+                <h3>📈 Quick Stats</h3>
+                <div class="stat-item">
+                    <span>Total Cards:</span>
+                    <span id="totalCards">0</span>
+                </div>
+                <div class="stat-item">
+                    <span>Due Today:</span>
+                    <span id="dueToday">0</span>
+                </div>
+                <div class="stat-item">
+                    <span>Accuracy:</span>
+                    <span id="accuracy">0%</span>
+                </div>
+                <div class="stat-item">
+                    <span>Streak:</span>
+                    <span id="streak">0</span>
+                </div>
             </div>
-            <span>AI is thinking...</span>
         </div>
 
-        <div class="chat-input-container">
-            <textarea 
-                id="chatInput" 
-                class="chat-input" 
-                placeholder="Type your message or click the microphone to speak..."
-                rows="1"
-            ></textarea>
-            <div class="input-controls">
-                <button id="micBtn" class="btn mic-btn" title="Speech to Text">
-                    🎤
-                </button>
-                <button id="submitBtn" class="btn submit-btn" disabled>
-                    ➤
-                </button>
+        <!-- Main Content Area -->
+        <div class="main-content">
+            <!-- Header -->
+            <div class="header">
+                <h2 id="sectionTitle">AI Chat Assistant</h2>
+                <p id="sectionDescription">Ask me anything and create flashcards from our conversation!</p>
+            </div>
+
+            <!-- Chat Section -->
+            <div id="chatSection" class="section active">
+                <div class="chat-container-enhanced">
+                    <div id="chatMessages" class="chat-messages">
+                        <!-- Messages will be inserted here -->
+                    </div>
+
+                    <div id="typingIndicator" class="typing-indicator">
+                        <div class="message-avatar">🤖</div>
+                        <div class="typing-dots">
+                            <div></div>
+                            <div></div>
+                            <div></div>
+                        </div>
+                        <span>AI is thinking...</span>
+                    </div>
+
+                    <div class="chat-input-container">
+                        <textarea 
+                            id="chatInput" 
+                            class="chat-input" 
+                            placeholder="Type your message or click the microphone to speak..."
+                            rows="1"
+                        ></textarea>
+                        <div class="input-controls">
+                            <button id="micBtn" class="btn mic-btn" title="Speech to Text">
+                                🎤
+                            </button>
+                            <button id="flashcardBtn" class="btn flashcard-btn" disabled title="Create FlashCard from conversation">
+                                📚
+                            </button>
+                            <button id="submitBtn" class="btn submit-btn" disabled>
+                                ➤
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Review Section -->
+            <div id="reviewSection" class="section" style="display: none;">
+                <div class="flashcard-review">
+                    <div class="review-progress" id="reviewProgress" style="display: none;">
+                        <h3>Review Session</h3>
+                        <p>Card <span id="currentCard">1</span> of <span id="totalReviewCards">0</span></p>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progressFill" style="width: 0%;"></div>
+                        </div>
+                    </div>
+
+                    <div id="reviewContent">
+                        <div class="empty-state">
+                            <h3>🎉 No cards due for review!</h3>
+                            <p>Come back later or create more flashcards from your conversations.</p>
+                            <button class="cta-button" onclick="switchSection('chat')">Start Chatting</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FlashCards Section -->
+            <div id="flashcardsSection" class="section" style="display: none;">
+                <div id="flashcardsList" class="flashcard-list">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>Loading your flashcards...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats Section -->
+            <div id="statsSection" class="section" style="display: none;">
+                <div class="stats-container">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>Loading statistics...</p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
+    <!-- Status Indicators -->
     <div id="statusIndicator" class="status-indicator"></div>
     <div id="speechStatus" class="speech-status"></div>
 
+    <!-- Debug Controls -->
+    <div class="debug-controls">
+        <button id="debugBtn" class="debug-btn" title="Debug Azure AI Search (Ctrl+D)">🔍</button>
+        <button id="clearBtn" class="debug-btn" title="Clear Chat (Ctrl+L)">🧹</button>
+    </div>
+
+    <!-- Load JavaScript -->
     <script src="script.js"></script>
 </body>
 </html>

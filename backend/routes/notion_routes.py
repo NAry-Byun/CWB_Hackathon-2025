@@ -1,5 +1,3 @@
-# routes/notion_routes.py - ENHANCED Notion Routes with Full Content Search & Writing
-
 import logging
 import asyncio
 import re

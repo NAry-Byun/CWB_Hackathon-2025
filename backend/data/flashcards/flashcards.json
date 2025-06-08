@@ -1,0 +1,242 @@
+{
+  "test_user": {
+    "493ef8bc-9ce4-4c2a-ac34-dfd4493500fe": {
+      "id": "493ef8bc-9ce4-4c2a-ac34-dfd4493500fe",
+      "user_id": "test_user",
+      "front": "What is AI?",
+      "back": "AI is artificial intelligence.",
+      "tags": [
+        "ai"
+      ],
+      "difficulty": 2,
+      "mnemonic": null,
+      "related_concepts": [],
+      "source": "ai_conversation",
+      "created_date": "2025-06-08T03:28:52.781267",
+      "last_modified": "2025-06-08T03:28:52.781273",
+      "conversation_context": [],
+      "ai_enhanced": false,
+      "deck_name": "AI Conversations"
+    }
+  },
+  "demo_user_iv80ezaco": {
+    "cb02b3b2-4aeb-4a68-ad4b-b21de418c14b": {
+      "id": "cb02b3b2-4aeb-4a68-ad4b-b21de418c14b",
+      "user_id": "demo_user_iv80ezaco",
+      "front": "What was the decision of the last meeting?",
+      "back": "It seems I don't have specific details about the decision from your last meeting. If you'd like, you can share more context or check your notes, and I can help you summarize or organize the information. Let me know how I can assist!\n\n---\n**Sources used:** \ud83d\udd0d Found 1 results from Azure AI Search",
+      "tags": [
+        "ai"
+      ],
+      "difficulty": 4,
+      "mnemonic": null,
+      "related_concepts": [],
+      "source": "ai_conversation",
+      "created_date": "2025-06-08T03:31:51.871503",
+      "last_modified": "2025-06-08T03:31:51.871509",
+      "conversation_context": [
+        {
+          "user_message": "What was the decision of the last meeting?",
+          "ai_response": "It seems I don't have specific details about the decision from your last meeting. If you'd like, you can share more context or check your notes, and I can help you summarize or organize the information. Let me know how I can assist!\n\n---\n**Sources used:** \ud83d\udd0d Found 1 results from Azure AI Search",
+          "timestamp": "2025-06-08T03:31:48.834Z"
+        }
+      ],
+      "ai_enhanced": false,
+      "deck_name": "AI Conversations"
+    }
+  },
+  "demo_user_uujm7c047": {},
+  "demo_user_rf2dvbodo": {},
+  "demo_user_pnrzvwmso": {
+    "64f5635a-d9b3-45dc-ab74-72667b56133d": {
+      "id": "64f5635a-d9b3-45dc-ab74-72667b56133d",
+      "user_id": "demo_user_pnrzvwmso",
+      "front": "",
+      "back": "Sure! Here's a simple idea for creating a flashcard with the key points of your Business Plan 2024:\nFront of the flashcard:\n- Title: \"Business Plan 2024\"\n- Key focus: (e.g., Growth, Expansion, Innovation)\nBack of the flashcard:\n- Goals: (e.g., Increase revenue by X%, launch new product lines, expand market reach)\n- Strategies: (e.g., Digital marketing campaigns, partnerships, improving operational efficiency)\n- Metrics: (e.g., Monthly sales targets, customer acquisition numbers, profitability...",
+      "tags": [
+        "business",
+        "technology",
+        "math"
+      ],
+      "difficulty": 3,
+      "mnemonic": null,
+      "related_concepts": [],
+      "source": "ai_conversation",
+      "created_date": "2025-06-08T03:52:05.433387",
+      "last_modified": "2025-06-08T03:52:05.433394",
+      "conversation_context": [
+        {
+          "user_message": "can you make a flash card with business plan 2024?",
+          "ai_response": "Sure! Here's a simple idea for creating a flashcard with the key points of your Business Plan 2024:\nFront of the flashcard:\n- Title: \"Business Plan 2024\"\n- Key focus: (e.g., Growth, Expansion, Innovation)\nBack of the flashcard:\n- Goals: (e.g., Increase revenue by X%, launch new product lines, expand market reach)\n- Strategies: (e.g., Digital marketing campaigns, partnerships, improving operational efficiency)\n- Metrics: (e.g., Monthly sales targets, customer acquisition numbers, profitability benchmarks)\nIf you'd like, you can share more details about your business plan, and I can help refine the content for your flashcard!\n\n---\n**Sources used:** \ud83d\udd0d Found 1 results from Azure AI Search",
+          "timestamp": "2025-06-08T03:51:58.232Z"
+        }
+      ],
+      "ai_enhanced": false,
+      "deck_name": "AI Conversations",
+      "original_question": "can you make a flash card with business plan 2024?",
+      "original_answer": "Sure! Here's a simple idea for creating a flashcard with the key points of your Business Plan 2024:\nFront of the flashcard:\n- Title: \"Business Plan 2024\"\n- Key focus: (e.g., Growth, Expansion, Innovation)\nBack of the flashcard:\n- Goals: (e.g., Increase revenue by X%, launch new product lines, expand market reach)\n- Strategies: (e.g., Digital marketing campaigns, partnerships, improving operational efficiency)\n- Metrics: (e.g., Monthly sales targets, customer acquisition numbers, profitability benchmarks)\nIf you'd like, you can share more details about your business plan, and I can help refine the content for your flashcard!\n\n---\n**Sources used:** \ud83d\udd0d Found 1 results from Azure AI Search"
+    },
+    "330c267a-c21c-452d-812e-06faa3ca58df": {
+      "id": "330c267a-c21c-452d-812e-06faa3ca58df",
+      "user_id": "demo_user_pnrzvwmso",
+      "front": "",
+      "back": "Sure! Here's a simple idea for a flash card about the Business Plan 2024:\nFront of the card:\n- Title: Business Plan 2024\n- Key Question: What are the main goals and strategies for this year?\nBack of the card:\n- Main Goals:\n- Increase revenue by 20%\n- Launch new product lines\n- Expand into two new markets\n- Strategies:\n- Focus on digital marketing campaigns\n- Strengthen customer retention programs\n- Invest in employee training and development\nYou can customize the details based on your specifi...",
+      "tags": [
+        "business",
+        "technology"
+      ],
+      "difficulty": 3,
+      "mnemonic": null,
+      "related_concepts": [],
+      "source": "ai_conversation",
+      "created_date": "2025-06-08T03:52:30.920966",
+      "last_modified": "2025-06-08T03:52:30.920973",
+      "conversation_context": [
+        {
+          "user_message": "can you make a flash card with business plan 2024?",
+          "ai_response": "Sure! Here's a simple idea for creating a flashcard with the key points of your Business Plan 2024:\nFront of the flashcard:\n- Title: \"Business Plan 2024\"\n- Key focus: (e.g., Growth, Expansion, Innovation)\nBack of the flashcard:\n- Goals: (e.g., Increase revenue by X%, launch new product lines, expand market reach)\n- Strategies: (e.g., Digital marketing campaigns, partnerships, improving operational efficiency)\n- Metrics: (e.g., Monthly sales targets, customer acquisition numbers, profitability benchmarks)\nIf you'd like, you can share more details about your business plan, and I can help refine the content for your flashcard!\n\n---\n**Sources used:** \ud83d\udd0d Found 1 results from Azure AI Search",
+          "timestamp": "2025-06-08T03:51:58.232Z"
+        },
+        {
+          "user_message": "can you make a flash card with business plan 2024?",
+          "ai_response": "Sure! Here's a simple idea for a flash card about the Business Plan 2024:\nFront of the card:\n- Title: Business Plan 2024\n- Key Question: What are the main goals and strategies for this year?\nBack of the card:\n- Main Goals:\n- Increase revenue by 20%\n- Launch new product lines\n- Expand into two new markets\n- Strategies:\n- Focus on digital marketing campaigns\n- Strengthen customer retention programs\n- Invest in employee training and development\nYou can customize the details based on your specific business objectives or priorities. Let me know if you'd like help refining the content further!\n\n---\n**Sources used:** \ud83d\udd0d Found 1 results from Azure AI Search",
+          "timestamp": "2025-06-08T03:52:25.115Z"
+        }
+      ],
+      "ai_enhanced": false,
+      "deck_name": "AI Conversations",
+      "original_question": "can you make a flash card with business plan 2024?",
+      "original_answer": "Sure! Here's a simple idea for a flash card about the Business Plan 2024:\nFront of the card:\n- Title: Business Plan 2024\n- Key Question: What are the main goals and strategies for this year?\nBack of the card:\n- Main Goals:\n- Increase revenue by 20%\n- Launch new product lines\n- Expand into two new markets\n- Strategies:\n- Focus on digital marketing campaigns\n- Strengthen customer retention programs\n- Invest in employee training and development\nYou can customize the details based on your specific business objectives or priorities. Let me know if you'd like help refining the content further!\n\n---\n**Sources used:** \ud83d\udd0d Found 1 results from Azure AI Search"
+    }
+  },
+  "demo_user_7kbh7xp0k": {
+    "3e832934-164a-4a3c-8a74-282700900d48": {
+      "id": "3e832934-164a-4a3c-8a74-282700900d48",
+      "user_id": "demo_user_7kbh7xp0k",
+      "front": "Business Plan 2024 - Key Highlights",
+      "back": "- Goals: Expand customer base by 20%, improve product quality, and launch 2 new services \n- Strategy: Focus on digital marketing, customer retention programs, and partnerships \n- Budget: Allocate resources to R&D, marketing campaigns, and operational efficiency \n- Timeline: Quarterly milestones for product launches and growth targets",
+      "tags": [
+        "business",
+        "technology",
+        "finance"
+      ],
+      "difficulty": 4,
+      "mnemonic": null,
+      "related_concepts": [],
+      "source": "ai_conversation",
+      "created_date": "2025-06-08T03:55:47.524605",
+      "last_modified": "2025-06-08T03:55:47.524611",
+      "conversation_context": [
+        {
+          "user_message": "can you make a flash card with business plan 2024?",
+          "ai_response": "Sure! Here\u2019s an idea for a flash card summarizing the business plan for 2024:\nFront of the card:\n\"Business Plan 2024 - Key Highlights\"\nBack of the card:\n- Goals: Expand customer base by 20%, improve product quality, and launch 2 new services.\n- Strategy: Focus on digital marketing, customer retention programs, and partnerships.\n- Budget: Allocate resources to R&D, marketing campaigns, and operational efficiency.\n- Timeline: Quarterly milestones for product launches and growth targets.\nLet me know if you need more details or specific sections added to the flash card!\n\n---\n**Sources used:** \ud83d\udd0d Found 1 results from Azure AI Search",
+          "timestamp": "2025-06-08T03:55:43.582Z"
+        }
+      ],
+      "ai_enhanced": true,
+      "deck_name": "AI Conversations",
+      "original_question": "can you make a flash card with business plan 2024?",
+      "original_answer": "Sure! Here\u2019s an idea for a flash card summarizing the business plan for 2024:\nFront of the card:\n\"Business Plan 2024 - Key Highlights\"\nBack of the card:\n- Goals: Expand customer base by 20%, improve product quality, and launch 2 new services.\n- Strategy: Focus on digital marketing, customer retention programs, and partnerships.\n- Budget: Allocate resources to R&D, marketing campaigns, and operational efficiency.\n- Timeline: Quarterly milestones for product launches and growth targets.\nLet me know if you need more details or specific sections added to the flash card!\n\n---\n**Sources used:** \ud83d\udd0d Found 1 results from Azure AI Search"
+    }
+  },
+  "demo_user_zyyewtjsk": {
+    "6005c80d-97d9-4255-a974-94ed0fe4d77c": {
+      "id": "6005c80d-97d9-4255-a974-94ed0fe4d77c",
+      "user_id": "demo_user_zyyewtjsk",
+      "front": "Business Plan 2024",
+      "back": "- Vision: Achieve sustainable growth and expand market share \n- Goals: \n- Increase revenue by 20% \n- Launch 2 new products \n- Strengthen customer retention strategies \n- Key Strategies: \n- Invest in digital marketing \n- Enhance product development \n- Focus on customer experience improvements \n- Budget Allocation: \n- 40% Marketing \n- 30% Product Development \n- 20% Operations \n- 10% Training",
+      "tags": [
+        "business",
+        "technology",
+        "finance"
+      ],
+      "difficulty": 3,
+      "mnemonic": null,
+      "related_concepts": [],
+      "source": "ai_conversation",
+      "created_date": "2025-06-08T04:00:03.769011",
+      "last_modified": "2025-06-08T04:00:03.769018",
+      "conversation_context": [
+        {
+          "user_message": "Summarise the business plan 2024",
+          "ai_response": "The Business Plan for 2024 focuses on driving growth, improving efficiency, and expanding market presence. Key priorities include:\n- Scaling operations to meet increased demand and explore new markets.\n- Enhancing customer experience through innovative solutions and improved service delivery.\n- Investing in technology to streamline processes and boost productivity.\n- Strengthening partnerships and collaboration to support long-term goals.\n- Focusing on sustainability initiatives to align with environmental and social responsibility.\nThe plan emphasizes strategic investments, operational excellence, and adaptability to changing market conditions to achieve success in 2024. Let me know if you need more detailed insights into specific areas!\n\n---\n**Sources used:** \ud83d\udd0d Found 1 results from Azure AI Search",
+          "timestamp": "2025-06-08T03:59:42.084Z"
+        },
+        {
+          "user_message": "can you make a flash card with business plan 2024?",
+          "ai_response": "Sure! A flash card is a quick and concise way to summarize key points. Here's an example for a \"Business Plan 2024\" flash card:\nFront:\nBusiness Plan 2024\nBack:\n- Vision: Achieve sustainable growth and expand market share\n- Goals:\n- Increase revenue by 20%\n- Launch 2 new products\n- Strengthen customer retention strategies\n- Key Strategies:\n- Invest in digital marketing\n- Enhance product development\n- Focus on customer experience improvements\n- Budget Allocation:\n- 40% Marketing\n- 30% Product Development\n- 20% Operations\n- 10% Training\nLet me know if you want to customize or add anything specific!\n\n---\n**Sources used:** \ud83d\udd0d Found 1 results from Azure AI Search",
+          "timestamp": "2025-06-08T03:59:55.894Z"
+        }
+      ],
+      "ai_enhanced": true,
+      "deck_name": "AI Conversations",
+      "original_question": "can you make a flash card with business plan 2024?",
+      "original_answer": "Sure! A flash card is a quick and concise way to summarize key points. Here's an example for a \"Business Plan 2024\" flash card:\nFront:\nBusiness Plan 2024\nBack:\n- Vision: Achieve sustainable growth and expand market share\n- Goals:\n- Increase revenue by 20%\n- Launch 2 new products\n- Strengthen customer retention strategies\n- Key Strategies:\n- Invest in digital marketing\n- Enhance product development\n- Focus on customer experience improvements\n- Budget Allocation:\n- 40% Marketing\n- 30% Product Development\n- 20% Operations\n- 10% Training\nLet me know if you want to customize or add anything specific!\n\n---\n**Sources used:** \ud83d\udd0d Found 1 results from Azure AI Search"
+    }
+  },
+  "demo_user_1sfvlt9w0": {
+    "2e6739de-6d33-4ca3-b074-70ce8de38c61": {
+      "id": "2e6739de-6d33-4ca3-b074-70ce8de38c61",
+      "user_id": "demo_user_1sfvlt9w0",
+      "front": "Business Plan 2024 Overview",
+      "back": "- Goals: Expand market reach, increase revenue by 15%, enhance customer experience \n- Key Strategies: Invest in digital marketing, launch new products, improve operational efficiency \n- Budget: Allocate funds for technology upgrades, employee training, marketing campaigns \n- Timeline: Q1 - Launch new products; Q2 - Focus on customer retention; Q3/Q4 - Scale operations",
+      "tags": [
+        "business",
+        "technology",
+        "finance"
+      ],
+      "difficulty": 3,
+      "mnemonic": null,
+      "related_concepts": [],
+      "source": "ai_conversation",
+      "created_date": "2025-06-08T04:09:16.024070",
+      "last_modified": "2025-06-08T04:09:16.024077",
+      "conversation_context": [
+        {
+          "user_message": "can you make a flash card with business plan 2024?",
+          "ai_response": "I can help you create a simple flashcard-style summary for your business plan 2024. Here's an example:\nFront: \nBusiness Plan 2024 \nBack: \n- Goals: Expand market reach, increase revenue by 15%, and enhance customer experience. \n- Key Strategies: Invest in digital marketing, launch new products, and improve operational efficiency. \n- Budget: Allocate funds for technology upgrades, employee training, and marketing campaigns. \n- Timeline: Q1 - Launch new products; Q2 - Focus on customer retention; Q3/Q4 - Scale operations. \nLet me know if you\u2019d like me to add or modify anything!\n\n---\n**Sources used:** \ud83d\udd0d Found 1 results from Azure AI Search",
+          "timestamp": "2025-06-08T04:09:03.993Z"
+        }
+      ],
+      "ai_enhanced": true,
+      "deck_name": "AI Conversations",
+      "original_question": "can you make a flash card with business plan 2024?",
+      "original_answer": "I can help you create a simple flashcard-style summary for your business plan 2024. Here's an example:\nFront: \nBusiness Plan 2024 \nBack: \n- Goals: Expand market reach, increase revenue by 15%, and enhance customer experience. \n- Key Strategies: Invest in digital marketing, launch new products, and improve operational efficiency. \n- Budget: Allocate funds for technology upgrades, employee training, and marketing campaigns. \n- Timeline: Q1 - Launch new products; Q2 - Focus on customer retention; Q3/Q4 - Scale operations. \nLet me know if you\u2019d like me to add or modify anything!\n\n---\n**Sources used:** \ud83d\udd0d Found 1 results from Azure AI Search"
+    }
+  },
+  "demo_user_bjq02k8hj": {
+    "26e22d59-f820-42e0-8dea-9d6f50483dbf": {
+      "id": "26e22d59-f820-42e0-8dea-9d6f50483dbf",
+      "user_id": "demo_user_bjq02k8hj",
+      "front": "Business Plan 2024 - Key Highlights",
+      "back": "- Vision: Achieve 15% revenue growth and expand into 2 new markets \n- Goals: Launch 3 new products by Q3, enhance customer retention by 20% \n- Strategies: Invest in digital marketing, strengthen supplier partnerships \n- Budget: $1.5M for R&D, $500K for marketing \n- Timeline: Major milestones by Q4",
+      "tags": [
+        "business",
+        "technology",
+        "finance"
+      ],
+      "difficulty": 3,
+      "mnemonic": null,
+      "related_concepts": [],
+      "source": "ai_conversation",
+      "created_date": "2025-06-08T04:33:28.481414",
+      "last_modified": "2025-06-08T04:33:28.481420",
+      "conversation_context": [
+        {
+          "user_message": "Summarise the business plan 2024",
+          "ai_response": "It looks like I don\u2019t have the full details of your business plan for 2024 in the provided documents. If you can share more specifics or key areas you'd like summarized, I\u2019ll do my best to help. Generally, a business plan for the year ahead includes:\n- Strategic goals and objectives for the company\n- Financial forecasts and budgeting plans\n- Market analysis and growth strategies\n- Key projects or initiatives\n- Resource allocation and staffing plans\n- Risk management strategies\nLet me know if you want to focus on any particular aspect, or if you can share more details, I can create a better summary for you!\n\n---\n**Sources used:** \ud83d\udd0d Found 1 results from Azure AI Search; \ud83d\udd0d Found 3 results from Cosmos DB",
+          "timestamp": "2025-06-08T04:32:49.786Z"
+        },
+        {
+          "user_message": "can you make a flash card with business plan 2024?",
+          "ai_response": "Sure! A flash card is essentially a quick and concise summary of information. Here's a simple example of how your business plan for 2024 could look like on a flash card:\nFront of the card:\n\"Business Plan 2024 - Key Highlights\"\nBack of the card:\n- Vision: Achieve 15% growth in revenue and expand into 2 new markets.\n- Goals:\n- Launch 3 new products by Q3.\n- Enhance customer retention by 20%.\n- Strategies:\n- Invest in digital marketing and analytics.\n- Strengthen partnerships with suppliers.\n- Budget: Allocate $1.5M for R&D and $500K for marketing.\n- Timeline: Major milestones to be achieved by Q4.\nLet me know if you\u2019d like me to adjust the content or focus on specific areas!\n\n---\n**Sources used:** \ud83d\udd0d Found 1 results from Azure AI Search; \ud83d\udd0d Found 3 results from Cosmos DB",
+          "timestamp": "2025-06-08T04:33:22.688Z"
+        }
+      ],
+      "ai_enhanced": true,
+      "deck_name": "AI Conversations",
+      "original_question": "can you make a flash card with business plan 2024?",
+      "original_answer": "Sure! A flash card is essentially a quick and concise summary of information. Here's a simple example of how your business plan for 2024 could look like on a flash card:\nFront of the card:\n\"Business Plan 2024 - Key Highlights\"\nBack of the card:\n- Vision: Achieve 15% growth in revenue and expand into 2 new markets.\n- Goals:\n- Launch 3 new products by Q3.\n- Enhance customer retention by 20%.\n- Strategies:\n- Invest in digital marketing and analytics.\n- Strengthen partnerships with suppliers.\n- Budget: Allocate $1.5M for R&D and $500K for marketing.\n- Timeline: Major milestones to be achieved by Q4.\nLet me know if you\u2019d like me to adjust the content or focus on specific areas!\n\n---\n**Sources used:** \ud83d\udd0d Found 1 results from Azure AI Search; \ud83d\udd0d Found 3 results from Cosmos DB"
+    }
+  }
+}
