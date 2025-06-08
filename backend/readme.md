@@ -2,7 +2,6 @@
 
 ## 🛠️ Backend Instructions
 
-### 📁 Folder Structure
 
 
 ---
