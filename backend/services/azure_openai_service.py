@@ -1,4 +1,4 @@
-# services/azure_openai_service.py - ENHANCED WITH NOTION INTEGRATION AND BETTER FORMATTING (FIXED)
+# services/azure_openai_service.py - FIXED TO EXTRACT ACTUAL MEETING DETAILS
 
 import os
 import asyncio
@@ -10,7 +10,7 @@ from openai import AsyncAzureOpenAI
 logger = logging.getLogger(__name__)
 
 class AzureOpenAIService:
-    """Complete Azure OpenAI Service with Notion integration support and improved text formatting"""
+    """Complete Azure OpenAI Service with proper Notion content extraction"""
 
     def __init__(self):
         """Initialize Azure OpenAI service with environment variables"""
@@ -76,7 +76,7 @@ class AzureOpenAIService:
         temperature: float = 0.7
     ) -> Dict[str, Any]:
         """
-        Generate AI response using Azure OpenAI Chat Completions with improved formatting
+        Generate AI response using Azure OpenAI Chat Completions with proper Notion content extraction
         
         Args:
             user_message: User's input message
@@ -90,7 +90,7 @@ class AzureOpenAIService:
             Dict with assistant_message and metadata
         """
         try:
-            # Build conversation messages with Notion data
+            # Build conversation messages with enhanced Notion data processing
             messages = self._build_messages(user_message, context, document_chunks, notion_pages)
             
             logger.info(f"🤖 Generating response for: '{user_message[:50]}...'")
@@ -203,7 +203,7 @@ class AzureOpenAIService:
         notion_pages: List[Dict] = None
     ) -> List[Dict[str, str]]:
         """
-        Build conversation messages for Azure OpenAI Chat Completions
+        Build conversation messages for Azure OpenAI Chat Completions with enhanced Notion processing
         
         Args:
             user_message: Current user message
@@ -216,8 +216,8 @@ class AzureOpenAIService:
         """
         messages = []
 
-        # System message with instructions including Notion data
-        system_prompt = self._get_system_prompt(document_chunks, notion_pages)
+        # Enhanced system message with specific Notion content instructions
+        system_prompt = self._get_enhanced_system_prompt(user_message, document_chunks, notion_pages)
         messages.append({
             "role": "system",
             "content": system_prompt
@@ -232,128 +232,142 @@ class AzureOpenAIService:
                         "content": msg["content"]
                     })
 
-        # Add current user message
+        # Enhanced user message with specific instructions for meeting queries
+        enhanced_user_message = self._enhance_user_message(user_message, notion_pages)
         messages.append({
             "role": "user",
-            "content": user_message
+            "content": enhanced_user_message
         })
 
         return messages
 
-    def _get_system_prompt(
+    def _enhance_user_message(self, user_message: str, notion_pages: List[Dict] = None) -> str:
+        """Enhance user message with specific instructions based on content type"""
+        enhanced_message = user_message
+        
+        # Check if this is a meeting/calendar query
+        meeting_keywords = ['meeting', 'calendar', 'schedule', 'appointment', 'agenda']
+        is_meeting_query = any(keyword in user_message.lower() for keyword in meeting_keywords)
+        
+        if is_meeting_query and notion_pages and len(notion_pages) > 0:
+            enhanced_message += "\n\nIMPORTANT: I can see you have Notion calendar/meeting pages available. Please extract and present the actual meeting details (dates, times, locations, titles) directly in your response. Do NOT just provide links or tell me to check the Notion page. I want to see the specific meeting schedule information right here in the chat."
+        
+        return enhanced_message
+
+    def _get_enhanced_system_prompt(
         self, 
+        user_message: str,
         document_chunks: List[Dict] = None,
         notion_pages: List[Dict] = None
     ) -> str:
         """
-        Create system prompt with optional document context and Notion data
+        Create enhanced system prompt with balanced instructions for all content types
         
         Args:
+            user_message: The user's query to understand context
             document_chunks: Relevant document chunks from vector search
             notion_pages: Notion pages found during search
             
         Returns:
-            System prompt string with all available context
+            Enhanced system prompt string with balanced extraction instructions
         """
-        base_prompt = """You are an AI Personal Assistant powered by Azure OpenAI, Cosmos DB, and Notion. 
-You are helpful, knowledgeable, and provide accurate information in a conversational manner.
+        # Detect if this is a meeting/calendar query
+        meeting_keywords = ['meeting', 'calendar', 'schedule', 'appointment', 'agenda', 'july', 'june']
+        is_meeting_query = any(keyword in user_message.lower() for keyword in meeting_keywords)
+        
+        base_prompt = """You are an AI Personal Assistant with access to the user's documents, Notion workspace, and knowledge base. You provide helpful, accurate information based on available content.
 
-IMPORTANT RESPONSE STYLE:
-- Write in plain, natural English without special formatting
-- Use simple, clear sentences that are easy to read
-- NO markdown symbols (no ##, **, *, ###, etc.)
-- NO special characters or formatting codes
-- Write like you're having a normal conversation
-- Organize information with simple paragraphs and line breaks
-- Use simple dashes (-) for lists if needed
-- Keep responses natural and conversational
+RESPONSE GUIDELINES:
 
-EXAMPLE OF GOOD RESPONSE:
-"An AI course is a structured program designed to teach people about Artificial Intelligence. These courses cover the principles, applications, and techniques of AI.
+1. USE AVAILABLE CONTENT: Always use information from the provided document chunks, Notion pages, and search results to answer questions accurately and specifically.
 
-Key components typically include:
-- Introduction to AI concepts and history
-- Machine Learning fundamentals  
-- Deep Learning and neural networks
-- Natural Language Processing
-- Data Science and preparation methods
+2. BE COMPREHENSIVE: When users ask about specific topics, extract and present relevant details from the available content. Don't just acknowledge that content exists - use it to provide specific answers.
 
-The courses are suitable for beginners, tech enthusiasts, business professionals, and anyone interested in AI technology."
+3. SPECIAL HANDLING FOR MEETINGS/CALENDARS: When users ask about meetings or schedules:
+   - Extract ALL meeting details from Notion page content
+   - Present dates, times, locations, and meeting titles
+   - Organize chronologically and be comprehensive
+   - Don't just provide links - show the actual schedule
 
-DO NOT use these patterns:
-- ## Headers or ### sections
-- **bold text** or *italic text*
-- • bullet symbols
-- Complex formatting or markup
-- Technical markdown syntax
+4. DOCUMENT SEARCH RESULTS: When document chunks contain relevant information:
+   - Summarize and present the key information
+   - Reference specific details from the content
+   - Combine information from multiple sources when relevant
 
-When responding to questions about meetings, schedules, or workspace information, prioritize the Notion data as it represents the user's current and most accurate information."""
+5. RESPONSE STYLE:
+   - Write in clear, natural language
+   - Be specific and informative
+   - Use simple formatting with dashes (-) for lists
+   - Organize information logically
+
+6. PROVIDE COMPLETE ANSWERS: Always aim to fully answer the user's question using the available content rather than suggesting they look elsewhere."""
+
+        # Add specific meeting instructions if applicable
+        if is_meeting_query and notion_pages and len(notion_pages) > 0:
+            base_prompt += """
+
+MEETING QUERY DETECTED: Extract and present the complete meeting schedule from the Notion page content. Include all dates, times, locations, and meeting details in your response."""
 
         context_parts = []
 
-        # Add Notion pages to system prompt
-        if notion_pages and len(notion_pages) > 0:
-            notion_context = "\n\n## Notion Workspace Data\n\n"
-            notion_context += f"I have access to your Notion workspace and found {len(notion_pages)} relevant pages:\n\n"
+        # Add document context first (for general search results)
+        if document_chunks and len(document_chunks) > 0:
+            doc_context = "\n\n=== DOCUMENT SEARCH RESULTS ===\n\n"
+            doc_context += f"Found {len(document_chunks)} relevant documents for your query:\n\n"
             
-            for i, page in enumerate(notion_pages[:5]):  # Limit to top 5 pages
+            for i, chunk in enumerate(document_chunks[:5]):  # Increased to 5 chunks
+                file_name = chunk.get("file_name", "Unknown Document")
+                content = chunk.get("content", chunk.get("chunk_text", ""))
+                similarity = chunk.get("similarity", 0.0)
+                
+                # Ensure we have substantial content
+                if content and len(content.strip()) > 10:
+                    doc_context += f"DOCUMENT {i+1}: {file_name} (Relevance: {similarity:.2f})\n"
+                    doc_context += f"Content: {content[:1500]}\n\n"  # Increased content length
+            
+            doc_context += "Use the above document content to provide specific, detailed answers to the user's question.\n"
+            context_parts.append(doc_context)
+
+        # Enhanced Notion pages processing
+        if notion_pages and len(notion_pages) > 0:
+            notion_context = "\n\n=== NOTION WORKSPACE CONTENT ===\n\n"
+            
+            for i, page in enumerate(notion_pages[:3]):
                 title = page.get("title", "Untitled Page")
                 page_id = page.get("id", "unknown")
                 url = page.get("url", "")
                 last_edited = page.get("last_edited_time", "")
-                created_time = page.get("created_time", "")
-                content = page.get("content", "")
                 
-                notion_context += f"**Page {i+1}: {title}**\n"
-                notion_context += f"• Page ID: {page_id}\n"
+                # CRITICAL: Get the full content from the page
+                full_content = page.get("full_content", "")
+                content_snippets = page.get("content_snippets", [])
+                
+                notion_context += f"NOTION PAGE {i+1}: {title}\n"
                 if url:
-                    notion_context += f"• URL: {url}\n"
-                if last_edited:
-                    notion_context += f"• Last edited: {last_edited}\n"
-                if created_time:
-                    notion_context += f"• Created: {created_time}\n"
+                    notion_context += f"URL: {url}\n"
                 
-                # Include content preview if available
-                if content:
-                    preview = content[:800] if len(content) > 800 else content
-                    notion_context += f"• Content preview:\n{preview}\n"
-                    if len(content) > 800:
-                        notion_context += "• [Content truncated...]\n"
+                # Include FULL content for extraction
+                if full_content:
+                    notion_context += f"\nPAGE CONTENT:\n{full_content}\n"
+                elif content_snippets:
+                    notion_context += f"\nCONTENT SNIPPETS:\n"
+                    for snippet in content_snippets[:5]:
+                        notion_context += f"- {snippet}\n"
                 
-                notion_context += "\n"
+                notion_context += "\n" + "-"*50 + "\n\n"
             
-            notion_context += """**Important Guidelines for Using Notion Data:**
-• Reference specific page titles and content
-• Include relevant dates and times
-• Mention page URLs when helpful
-• Provide actionable information based on the content
-• If multiple meetings or events are found, organize them chronologically
-• Always cite which Notion page the information comes from
-
-Respond in a natural, helpful way while incorporating this Notion information."""
+            if is_meeting_query:
+                notion_context += """MEETING EXTRACTION: Extract and present the complete meeting schedule from the above Notion content. Include all dates, times, locations, and meeting titles.\n"""
+            else:
+                notion_context += """Use the above Notion content to provide specific answers to the user's question.\n"""
             
             context_parts.append(notion_context)
-
-        # Add document context to prompt
-        if document_chunks and len(document_chunks) > 0:
-            doc_context = "\n\n## Document Knowledge Base\n\n"
-            doc_context += "Relevant information from your knowledge base:\n\n"
-            
-            for i, chunk in enumerate(document_chunks[:3]):  # Limit to top 3 chunks
-                file_name = chunk.get("file_name", "Unknown")
-                content = chunk.get("content", "")[:500]  # Limit content length
-                similarity = chunk.get("similarity", 0.0)
-                
-                doc_context += f"**Document {i+1}: {file_name} (Relevance: {similarity:.2f})**\n{content}\n\n"
-            
-            doc_context += "Please use this information to provide accurate and relevant responses."
-            
-            context_parts.append(doc_context)
 
         # Combine all context
         if context_parts:
             full_prompt = base_prompt + "".join(context_parts)
-            full_prompt += "\n\nBased on the above information, please provide a helpful and accurate response to the user's question."
+            if is_meeting_query:
+                full_prompt += "\n\nREMEMBER: Extract and present the actual meeting details from the Notion content above. The user wants to see the specific schedule information in your response, not just links or references to check elsewhere."
             return full_prompt
 
         return base_prompt
@@ -381,7 +395,8 @@ Respond in a natural, helpful way while incorporating this Notion information.""
                 "test_embedding_dimensions": len(test_response.data[0].embedding),
                 "connectivity": "successful",
                 "notion_integration": "enabled",
-                "text_formatting": "enhanced"
+                "text_formatting": "enhanced",
+                "meeting_extraction": "enabled"
             }
 
         except Exception as e:
