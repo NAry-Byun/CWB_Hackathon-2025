@@ -5,11 +5,6 @@ This folder contains the basic web frontend for the **Gomm AI** GenAI-powered pe
 
 The frontend is lightweight and customizable, built using standard HTML, CSS, and JavaScript. This `README` outlines how to set it up and modify key configurations.
 
----
-
-### 📁 Folder Structure
-
-<img src="https://github.com/NAry-Byun/CWB_Hackathon-2025/blob/main/frontend/src/imag/frontend%20structure.png?raw=true" alt="Folder Structure" width="500"/>
 
 
 ---
