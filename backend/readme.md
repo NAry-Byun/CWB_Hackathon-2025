@@ -40,8 +40,7 @@
 
 ### ⚡ Azure Function Trigger
 
-The original concept was implemented using a local Flask server. However, to automate the workflow, an **Azure Function Trigger** was introduced. It runs automatically when a user uploads a document to **Azure Blob Storage**, processes the document, and stores the result in **Cosmos DB**.
-This serverless approach reduces manual effort and simplifies the overall system architecture.
+The original concept was implemented using a local Flask server. To automate the workflow and improve scalability, it was migrated to a serverless architecture using an Azure Function Trigger. This function is automatically invoked whenever a document is uploaded to Azure Blob Storage. It processes the file, extracts key information, and stores the structured data in Azure Cosmos DB. This approach reduces manual effort and simplifies the overall system architecture.
 
 ![Azure Trigger Flow](https://github.com/NAry-Byun/CWB_Hackathon-2025/blob/develop/frontend/src/imag/rahul_trigger.png?raw=true)
 
